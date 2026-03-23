@@ -31,10 +31,12 @@ import PersonIcon from "@mui/icons-material/Person";
 import AddIcon from "@mui/icons-material/Add";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DeleteIcon from "@mui/icons-material/Delete";
+import LogoutIcon from "@mui/icons-material/Logout";
 import type { CalorieRecord, UserProfile, WeightRecord } from "@/types/calorie";
 import { calculateBMR } from "@/types/calorie";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* ───── 模拟数据 ───── */
 
@@ -200,6 +202,7 @@ function StatCard({
 /* ───── 主页面 ───── */
 
 export default function Home() {
+  const { user, logout } = useAuth();
   const [records, setRecords] = useState<CalorieRecord[]>(initialRecords);
   const [weightHistory, setWeightHistory] =
     useState<WeightRecord[]>(initialWeightHistory);
@@ -279,7 +282,10 @@ export default function Home() {
             startIcon={<PersonIcon />}
             onClick={() => setProfileOpen(true)}
           >
-            个人信息
+            {user?.nickname || "个人信息"}
+          </Button>
+          <Button color="inherit" startIcon={<LogoutIcon />} onClick={logout}>
+            退出
           </Button>
         </Toolbar>
       </AppBar>
