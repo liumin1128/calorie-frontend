@@ -1,13 +1,27 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Tech stack: Next.js 16 (App Router), React 19, TypeScript 5 (strict), MUI v7, Emotion, pnpm workspace
+  Backend: 独立 REST API (非本仓库), 通过 NEXT_PUBLIC_API_URL 配置
+  Domain: 卡路里追踪应用 (Calorie Tracker)
+  Conventions:
+    - 函数式组件 + Hooks, 无 class 组件
+    - MUI 按需导入 (tree-shaking), 使用 sx prop 内联样式
+    - API 调用封装在 services/ 层 (按业务域拆分), 底层 HTTP 客户端在 lib/api.ts
+    - 认证通过 AuthContext (localStorage + Cookie 双存储)
+    - 路由守卫在 middleware.ts (基于 Cookie)
+    - 中文 UI
+  Code organization:
+    - services/: API 服务层, 按业务域拆分 (authService, calorieService...)
+    - utils/: 全局通用工具方法 (纯函数, 无副作用)
+    - lib/: 底层基础设施 (HTTP 客户端等)
+    - components/: UI 组件, 按功能域组织, 复杂功能可建子文件夹
+    - contexts/: 全局状态 Context, 不混入业务逻辑
+    - types/: 纯类型定义, 不含运行时代码
+    - 单文件职责单一, 超过200行应考虑拆分
+    - 组件不直接调用 fetch, 通过 services/ 间接访问
+    - 业务逻辑与 UI 分离, Hooks 封装业务状态
+  详见: openspec/current_state.md
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
