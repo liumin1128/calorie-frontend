@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import * as api from "@/lib/api";
 
 interface User {
@@ -44,6 +45,7 @@ function deleteCookie(name: string) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteCookie(TOKEN_KEY);
     setToken(null);
     setUser(null);
-  }, []);
+    router.push("/login");
+  }, [router]);
 
   return (
     <AuthContext.Provider
