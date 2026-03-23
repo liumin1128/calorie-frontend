@@ -5,11 +5,36 @@ interface AuthResponse {
   user: { id: string; email: string; nickname: string };
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    ...options,
-  });
+export interface RequestOptions extends Omit<RequestInit, "headers"> {
+  headers?: Record<string, string>;
+  token?: string;
+  params?: Record<string, string | number | boolean | undefined>;
+}
+
+export async function request<T>(
+  path: string,
+  options?: RequestOptions,
+): Promise<T> {
+  const { token, params, headers: rawHeaders, ...init } = options ?? {};
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...rawHeaders,
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  let url = `${API_BASE}${path}`;
+  if (params) {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined) sp.append(k, String(v));
+    }
+    const qs = sp.toString();
+    if (qs) url += `?${qs}`;
+  }
+
+  const res = await fetch(url, { ...init, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message || `请求失败 (${res.status})`);

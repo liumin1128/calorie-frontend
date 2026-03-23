@@ -18,6 +18,46 @@ export interface WeightRecord {
   weight: number;
 }
 
+/* ───── 后端 API 对齐类型 ───── */
+
+export type CalorieType = "intake" | "burn";
+
+export interface CalorieEntry {
+  _id: string;
+  userId: string;
+  type: CalorieType;
+  calories: number;
+  title: string;
+  description?: string;
+  images?: string[];
+  entryDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCalorieEntryDto {
+  type: CalorieType;
+  calories: number;
+  title: string;
+  description?: string;
+  entryDate: string;
+}
+
+export type UpdateCalorieEntryDto = Partial<CreateCalorieEntryDto>;
+
+export interface QueryCalorieEntryParams {
+  page?: number;
+  pageSize?: number;
+  startDate?: string;
+  endDate?: string;
+  type?: CalorieType;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+}
+
 export interface PresetItem {
   label: string;
   calories: number;

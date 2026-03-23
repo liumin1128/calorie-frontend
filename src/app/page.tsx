@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
@@ -13,7 +13,6 @@ import Grid from "@mui/material/Grid";
 import Fab from "@mui/material/Fab";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
-import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
@@ -21,7 +20,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Alert from "@mui/material/Alert";
-import AlertTitle from "@mui/material/AlertTitle";
+import CircularProgress from "@mui/material/CircularProgress";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
@@ -31,104 +30,27 @@ import PersonIcon from "@mui/icons-material/Person";
 import AddIcon from "@mui/icons-material/Add";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import LogoutIcon from "@mui/icons-material/Logout";
-import type { CalorieRecord, UserProfile, WeightRecord } from "@/types/calorie";
+import type {
+  CalorieEntry,
+  CalorieType,
+  CreateCalorieEntryDto,
+  UserProfile,
+  WeightRecord,
+} from "@/types/calorie";
 import { calculateBMR } from "@/types/calorie";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getCalorieEntries,
+  createCalorieEntry,
+  updateCalorieEntry,
+  deleteCalorieEntry,
+} from "@/services/calorieService";
 
-/* ───── 模拟数据 ───── */
-
-const TODAY = "2026-03-16";
-const YESTERDAY = "2026-03-15";
-
-const initialRecords: CalorieRecord[] = [
-  {
-    id: "y1",
-    description: "早餐 - 包子2个+豆浆",
-    type: "food",
-    calories: 320,
-    time: `${YESTERDAY}T07:30`,
-  },
-  {
-    id: "y2",
-    description: "午餐 - 米饭+番茄炒蛋+青菜",
-    type: "food",
-    calories: 490,
-    time: `${YESTERDAY}T12:00`,
-  },
-  {
-    id: "y3",
-    description: "快走(30分钟)",
-    type: "exercise",
-    calories: 150,
-    time: `${YESTERDAY}T15:00`,
-  },
-  {
-    id: "y4",
-    description: "晚餐 - 面条+小菜",
-    type: "food",
-    calories: 420,
-    time: `${YESTERDAY}T18:00`,
-  },
-  {
-    id: "y5",
-    description: "游泳(30分钟)",
-    type: "exercise",
-    calories: 250,
-    time: `${YESTERDAY}T20:00`,
-  },
-  {
-    id: "y6",
-    description: "夜宵 - 水果",
-    type: "food",
-    calories: 100,
-    time: `${YESTERDAY}T21:30`,
-  },
-  {
-    id: "t1",
-    description: "早餐 - 鸡蛋2个+全麦面包+牛奶",
-    type: "food",
-    calories: 426,
-    time: `${TODAY}T08:00`,
-  },
-  {
-    id: "t2",
-    description: "午餐 - 米饭+鸡胸肉+炒青菜",
-    type: "food",
-    calories: 475,
-    time: `${TODAY}T12:15`,
-  },
-  {
-    id: "t3",
-    description: "跑步(30分钟)",
-    type: "exercise",
-    calories: 300,
-    time: `${TODAY}T14:00`,
-  },
-  {
-    id: "t4",
-    description: "下午茶 - 苹果+酸奶",
-    type: "food",
-    calories: 215,
-    time: `${TODAY}T15:30`,
-  },
-  {
-    id: "t5",
-    description: "晚餐 - 鸡胸肉沙拉",
-    type: "food",
-    calories: 315,
-    time: `${TODAY}T18:30`,
-  },
-  {
-    id: "t6",
-    description: "散步(30分钟)",
-    type: "exercise",
-    calories: 100,
-    time: `${TODAY}T19:30`,
-  },
-];
+/* ───── 本地模拟数据（暂未对接 API） ───── */
 
 const initialWeightHistory: WeightRecord[] = [
   { date: "03/10", weight: 71.2 },
@@ -149,14 +71,15 @@ const initialProfile: UserProfile = {
 
 /* ───── 工具函数 ───── */
 
-function sumCalories(records: CalorieRecord[], type: "food" | "exercise") {
-  return records
-    .filter((r) => r.type === type)
-    .reduce((s, r) => s + r.calories, 0);
+function sumCalories(entries: CalorieEntry[], type: CalorieType) {
+  return entries
+    .filter((e) => e.type === type)
+    .reduce((s, e) => s + e.calories, 0);
 }
 
-function formatTime(time: string) {
-  return time.split("T")[1]?.slice(0, 5) ?? "";
+function formatTime(entryDate: string) {
+  const dt = new Date(entryDate);
+  return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
 }
 
 /* ───── 统计卡片 ───── */
@@ -202,48 +125,98 @@ function StatCard({
 /* ───── 主页面 ───── */
 
 export default function Home() {
-  const { user, logout } = useAuth();
-  const [records, setRecords] = useState<CalorieRecord[]>(initialRecords);
+  const { user, token, logout } = useAuth();
+
+  // API data
+  const [entries, setEntries] = useState<CalorieEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
+
+  // Local state (not API-backed)
   const [weightHistory, setWeightHistory] =
     useState<WeightRecord[]>(initialWeightHistory);
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
 
-  const [createOpen, setCreateOpen] = useState(false);
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<CalorieEntry | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [weightOpen, setWeightOpen] = useState(false);
   const [newWeight, setNewWeight] = useState("");
 
-  // 按日期过滤
-  const todayRecords = records.filter((r) => r.time.startsWith(TODAY));
-  const yesterdayRecords = records.filter((r) => r.time.startsWith(YESTERDAY));
+  // Load entries for selected date
+  const loadEntries = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // endDate 需要传次日，因为后端 new Date("2026-03-23") = UTC 午夜零点，
+      // 当天带时间的记录（如 15:30）会被 $lte 过滤掉
+      const nextDay = new Date(selectedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const endDate = nextDay.toISOString().split("T")[0];
 
-  // 今日统计
-  const todayIntake = sumCalories(todayRecords, "food");
-  const todayBurn = sumCalories(todayRecords, "exercise");
+      const res = await getCalorieEntries(token, {
+        startDate: selectedDate,
+        endDate,
+        pageSize: 100,
+      });
+      setEntries(res.data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [token, selectedDate]);
+
+  useEffect(() => {
+    loadEntries();
+  }, [loadEntries]);
+
+  // Statistics
+  const intake = sumCalories(entries, "intake");
+  const burn = sumCalories(entries, "burn");
   const bmr = calculateBMR(profile);
-  const todayNet = todayIntake - todayBurn - bmr;
+  const net = intake - burn - bmr;
 
-  // 昨日统计
-  const ydIntake = sumCalories(yesterdayRecords, "food");
-  const ydBurn = sumCalories(yesterdayRecords, "exercise");
-  const ydNet = ydIntake - ydBurn - bmr;
-
-  // 体重趋势
+  // Weight trend
   const weights = weightHistory.map((w) => w.weight);
   const minW = Math.min(...weights) - 0.5;
   const maxW = Math.max(...weights) + 0.5;
 
-  /* ── 事件处理 ── */
+  /* ── Event handlers ── */
 
-  const handleAddRecord = (record: Omit<CalorieRecord, "id">) => {
-    const id = `r${Date.now()}`;
-    setRecords((prev) =>
-      [...prev, { ...record, id }].sort((a, b) => a.time.localeCompare(b.time)),
-    );
+  const handleSubmitRecord = async (data: CreateCalorieEntryDto) => {
+    if (!token) return;
+    if (editingEntry) {
+      await updateCalorieEntry(token, editingEntry._id, data);
+    } else {
+      await createCalorieEntry(token, data);
+    }
+    await loadEntries();
   };
 
-  const handleDeleteRecord = (id: string) => {
-    setRecords((prev) => prev.filter((r) => r.id !== id));
+  const handleDeleteRecord = async (id: string) => {
+    if (!token) return;
+    try {
+      await deleteCalorieEntry(token, id);
+      setEntries((prev) => prev.filter((e) => e._id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败");
+    }
+  };
+
+  const handleOpenCreate = () => {
+    setEditingEntry(null);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (entry: CalorieEntry) => {
+    setEditingEntry(entry);
+    setDialogOpen(true);
   };
 
   const handleSaveProfile = (p: UserProfile) => {
@@ -253,7 +226,7 @@ export default function Home() {
   const handleUpdateWeight = () => {
     const w = parseFloat(newWeight);
     if (isNaN(w) || w <= 0) return;
-    const todayLabel = `${TODAY.slice(5).replace("-", "/")}`;
+    const todayLabel = `${selectedDate.slice(5).replace("-", "/")}`;
     setWeightHistory((prev) => {
       const exists = prev.findIndex((r) => r.date === todayLabel);
       if (exists >= 0) {
@@ -267,6 +240,8 @@ export default function Home() {
     setNewWeight("");
     setWeightOpen(false);
   };
+
+  const isToday = selectedDate === new Date().toISOString().split("T")[0];
 
   return (
     <Box sx={{ flexGrow: 1, pb: 10 }}>
@@ -323,22 +298,33 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* ── 今日概览 ── */}
-        <Typography variant="h5" gutterBottom fontWeight="bold">
-          📊 今日概览
-        </Typography>
+        {/* ── 日期选择 + 概览 ── */}
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+          <Typography variant="h5" fontWeight="bold">
+            📊 {isToday ? "今日概览" : `${selectedDate} 概览`}
+          </Typography>
+          <TextField
+            type="date"
+            size="small"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ width: 180 }}
+          />
+        </Stack>
+
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid size={{ xs: 6, md: 3 }}>
             <StatCard
               title="饮食摄入"
-              value={todayIntake}
+              value={intake}
               icon={<RestaurantIcon color="primary" />}
             />
           </Grid>
           <Grid size={{ xs: 6, md: 3 }}>
             <StatCard
               title="运动消耗"
-              value={todayBurn}
+              value={burn}
               icon={<FitnessCenterIcon color="warning" />}
             />
           </Grid>
@@ -352,46 +338,18 @@ export default function Home() {
           <Grid size={{ xs: 6, md: 3 }}>
             <StatCard
               title="净卡路里"
-              value={todayNet}
+              value={net}
               icon={
-                todayNet >= 0 ? (
+                net >= 0 ? (
                   <TrendingUpIcon color="error" />
                 ) : (
                   <TrendingDownIcon color="success" />
                 )
               }
-              color={todayNet >= 0 ? "error.main" : "success.main"}
+              color={net >= 0 ? "error.main" : "success.main"}
             />
           </Grid>
         </Grid>
-
-        {/* ── 昨日报告 ── */}
-        <Typography variant="h5" gutterBottom fontWeight="bold">
-          📋 昨日报告
-        </Typography>
-        <Alert
-          severity={ydNet <= 0 ? "success" : "warning"}
-          sx={{ mb: 4 }}
-          icon={ydNet <= 0 ? <TrendingDownIcon /> : <TrendingUpIcon />}
-        >
-          <AlertTitle>{YESTERDAY} 卡路里总结</AlertTitle>
-          <Stack direction="row" spacing={3} flexWrap="wrap" sx={{ mb: 1 }}>
-            <Typography variant="body2">
-              🍽️ 总摄入: <b>{ydIntake}</b> kcal
-            </Typography>
-            <Typography variant="body2">
-              🏃 运动消耗: <b>{ydBurn}</b> kcal
-            </Typography>
-            <Typography variant="body2">
-              🔥 基础代谢: <b>{bmr}</b> kcal
-            </Typography>
-          </Stack>
-          <Typography variant="body2" fontWeight="bold">
-            {ydNet <= 0
-              ? `✅ 净消耗 ${Math.abs(ydNet)} kcal，处于热量缺口，有助于减重`
-              : `⚠️ 净摄入 ${ydNet} kcal，处于热量盈余`}
-          </Typography>
-        </Alert>
 
         {/* ── 体重趋势 ── */}
         <Typography variant="h5" gutterBottom fontWeight="bold">
@@ -462,7 +420,7 @@ export default function Home() {
           </Stack>
         </Card>
 
-        {/* ── 今日记录列表 ── */}
+        {/* ── 记录列表 ── */}
         <Box
           sx={{
             display: "flex",
@@ -472,113 +430,103 @@ export default function Home() {
           }}
         >
           <Typography variant="h5" fontWeight="bold">
-            📝 今日记录
+            📝 {isToday ? "今日记录" : `${selectedDate} 记录`}
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setCreateOpen(true)}
+            onClick={handleOpenCreate}
           >
             新增记录
           </Button>
         </Box>
 
-        <Stack spacing={1.5} sx={{ mb: 4 }}>
-          {todayRecords.length === 0 && (
-            <Typography color="text.secondary" textAlign="center" py={4}>
-              暂无记录，点击右下角按钮添加
-            </Typography>
-          )}
-          {todayRecords.map((r) => (
-            <Card key={r.id} elevation={1}>
-              <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Stack direction="row" alignItems="center" spacing={1.5}>
-                  <AccessTimeIcon fontSize="small" color="action" />
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ width: 45, flexShrink: 0 }}
-                  >
-                    {formatTime(r.time)}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    icon={
-                      r.type === "food" ? (
-                        <RestaurantIcon />
-                      ) : (
-                        <FitnessCenterIcon />
-                      )
-                    }
-                    label={r.type === "food" ? "饮食" : "运动"}
-                    color={r.type === "food" ? "primary" : "warning"}
-                    variant="outlined"
-                    sx={{ width: 80 }}
-                  />
-                  <Typography variant="body1" sx={{ flex: 1 }}>
-                    {r.description}
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    fontWeight="bold"
-                    color={r.type === "food" ? "primary.main" : "warning.main"}
-                  >
-                    {r.type === "food" ? "+" : "-"}
-                    {r.calories} kcal
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteRecord(r.id)}
-                    color="error"
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
-              </CardContent>
-            </Card>
-          ))}
-        </Stack>
+        {error && (
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={
+              <Button color="inherit" size="small" onClick={loadEntries}>
+                重试
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        )}
 
-        {/* ── 昨日记录 ── */}
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="h6" color="text.secondary" gutterBottom>
-          昨日记录
-        </Typography>
-        <Stack spacing={1} sx={{ mb: 4, opacity: 0.75 }}>
-          {yesterdayRecords.map((r) => (
-            <Card key={r.id} elevation={0} variant="outlined">
-              <CardContent sx={{ py: 1, "&:last-child": { pb: 1 } }}>
-                <Stack direction="row" alignItems="center" spacing={1.5}>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ width: 45, flexShrink: 0 }}
-                  >
-                    {formatTime(r.time)}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label={r.type === "food" ? "饮食" : "运动"}
-                    color={r.type === "food" ? "primary" : "warning"}
-                    variant="outlined"
-                    sx={{ width: 65 }}
-                  />
-                  <Typography variant="body2" sx={{ flex: 1 }}>
-                    {r.description}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    fontWeight="bold"
-                    color="text.secondary"
-                  >
-                    {r.type === "food" ? "+" : "-"}
-                    {r.calories} kcal
-                  </Typography>
-                </Stack>
-              </CardContent>
-            </Card>
-          ))}
-        </Stack>
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Stack spacing={1.5} sx={{ mb: 4 }}>
+            {entries.length === 0 && (
+              <Typography color="text.secondary" textAlign="center" py={4}>
+                暂无记录，点击上方按钮添加
+              </Typography>
+            )}
+            {entries.map((entry) => (
+              <Card key={entry._id} elevation={1}>
+                <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <AccessTimeIcon fontSize="small" color="action" />
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ width: 45, flexShrink: 0 }}
+                    >
+                      {formatTime(entry.entryDate)}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      icon={
+                        entry.type === "intake" ? (
+                          <RestaurantIcon />
+                        ) : (
+                          <FitnessCenterIcon />
+                        )
+                      }
+                      label={entry.type === "intake" ? "饮食" : "运动"}
+                      color={entry.type === "intake" ? "primary" : "warning"}
+                      variant="outlined"
+                      sx={{ width: 80 }}
+                    />
+                    <Typography variant="body1" sx={{ flex: 1 }}>
+                      {entry.title}
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      color={
+                        entry.type === "intake"
+                          ? "primary.main"
+                          : "warning.main"
+                      }
+                    >
+                      {entry.type === "intake" ? "+" : "-"}
+                      {entry.calories} kcal
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenEdit(entry)}
+                      color="primary"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteRecord(entry._id)}
+                      color="error"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        )}
       </Container>
 
       {/* ── 浮动按钮 ── */}
@@ -586,16 +534,17 @@ export default function Home() {
         color="primary"
         aria-label="新增记录"
         sx={{ position: "fixed", bottom: 24, right: 24 }}
-        onClick={() => setCreateOpen(true)}
+        onClick={handleOpenCreate}
       >
         <AddIcon />
       </Fab>
 
       {/* ── 弹窗 ── */}
       <CreateRecordDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleAddRecord}
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSubmit={handleSubmitRecord}
+        initialData={editingEntry}
       />
       <ProfileDialog
         key={String(profileOpen)}
@@ -615,7 +564,7 @@ export default function Home() {
         <DialogTitle>更新体重</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            当前体重: {profile.weight} kg（每日选取最后一条记录作为当日体重）
+            当前体重: {profile.weight} kg
           </Typography>
           <TextField
             autoFocus
