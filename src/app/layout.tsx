@@ -3,6 +3,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import ThemeRegistry from "@/components/ThemeRegistry";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +22,9 @@ export default function RootLayout({
         <InitColorSchemeScript attribute="class" />
         <AppRouterCacheProvider>
           <ThemeRegistry>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <UserProfileProvider>{children}</UserProfileProvider>
+            </AuthProvider>
           </ThemeRegistry>
         </AppRouterCacheProvider>
       </body>

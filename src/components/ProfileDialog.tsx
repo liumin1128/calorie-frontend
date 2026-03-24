@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -10,26 +10,105 @@ import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Box from "@mui/material/Box";
-import type { UserProfile } from "@/types/calorie";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
+import { updateProfile } from "@/services/userService";
+import * as dynamicDataService from "@/services/dynamicDataService";
+import type { Gender } from "@/types/user";
 
 interface Props {
   open: boolean;
-  profile: UserProfile;
   onClose: () => void;
-  onSave: (profile: UserProfile) => void;
 }
 
-export default function ProfileDialog({
-  open,
-  profile,
-  onClose,
-  onSave,
-}: Props) {
-  const [form, setForm] = useState<UserProfile>(profile);
+interface FormState {
+  nickname: string;
+  gender: Gender;
+  birthday: string;
+  signature: string;
+  height: number;
+  weight: number;
+}
 
-  const handleSave = () => {
-    onSave(form);
-    onClose();
+function buildInitialForm(
+  profile: ReturnType<typeof useUserProfile>["profile"],
+): FormState {
+  return {
+    nickname: profile?.nickname ?? "",
+    gender: (profile?.gender as Gender) ?? "male",
+    birthday: profile?.birthday?.split("T")[0] ?? "",
+    signature: profile?.signature ?? "",
+    height: profile?.latestHeight?.value ?? 170,
+    weight: profile?.latestWeight?.value ?? 60,
+  };
+}
+
+export default function ProfileDialog({ open, onClose }: Props) {
+  const { token } = useAuth();
+  const { profile, refreshProfile } = useUserProfile();
+
+  const [form, setForm] = useState<FormState>(() => buildInitialForm(profile));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 每次打开弹窗时同步最新 profile 数据
+  useEffect(() => {
+    if (open) {
+      setForm(buildInitialForm(profile));
+      setError(null);
+    }
+  }, [open, profile]);
+
+  const handleSave = async () => {
+    if (!token) return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      const promises: Promise<unknown>[] = [];
+
+      // 基础资料
+      promises.push(
+        updateProfile(token, {
+          nickname: form.nickname || undefined,
+          gender: form.gender,
+          birthday: form.birthday || undefined,
+          signature: form.signature || undefined,
+        }),
+      );
+
+      // 身高：值变化时追加记录
+      const origHeight = profile?.latestHeight?.value;
+      if (form.height > 0 && form.height !== origHeight) {
+        promises.push(
+          dynamicDataService.create(token, {
+            category: "height",
+            value: form.height,
+          }),
+        );
+      }
+
+      // 体重：值变化时追加记录
+      const origWeight = profile?.latestWeight?.value;
+      if (form.weight > 0 && form.weight !== origWeight) {
+        promises.push(
+          dynamicDataService.create(token, {
+            category: "weight",
+            value: form.weight,
+          }),
+        );
+      }
+
+      await Promise.all(promises);
+      await refreshProfile();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -37,6 +116,18 @@ export default function ProfileDialog({
       <DialogTitle>个人信息设置</DialogTitle>
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: 1 }}>
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+
+          <TextField
+            label="昵称"
+            value={form.nickname}
+            onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+          />
+
           <ToggleButtonGroup
             value={form.gender}
             exclusive
@@ -48,10 +139,11 @@ export default function ProfileDialog({
           </ToggleButtonGroup>
 
           <TextField
-            label="年龄"
-            type="number"
-            value={form.age}
-            onChange={(e) => setForm({ ...form, age: Number(e.target.value) })}
+            label="生日"
+            type="date"
+            value={form.birthday}
+            onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }}
           />
 
           <TextField
@@ -72,11 +164,28 @@ export default function ProfileDialog({
             }
             slotProps={{ htmlInput: { step: 0.1 } }}
           />
+
+          <TextField
+            label="个性签名"
+            multiline
+            rows={2}
+            value={form.signature}
+            onChange={(e) => setForm({ ...form, signature: e.target.value })}
+            slotProps={{ htmlInput: { maxLength: 200 } }}
+            helperText={`${form.signature.length}/200`}
+          />
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>取消</Button>
-        <Button variant="contained" onClick={handleSave}>
+        <Button onClick={onClose} disabled={saving}>
+          取消
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={saving}
+          startIcon={saving ? <CircularProgress size={16} /> : undefined}
+        >
           保存
         </Button>
       </DialogActions>

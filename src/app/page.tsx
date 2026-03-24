@@ -15,10 +15,6 @@ import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
@@ -36,38 +32,19 @@ import type {
   CalorieEntry,
   CalorieType,
   CreateCalorieEntryDto,
-  UserProfile,
-  WeightRecord,
 } from "@/types/calorie";
 import { calculateBMR } from "@/types/calorie";
+import { calculateAge } from "@/types/user";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import {
   getCalorieEntries,
   createCalorieEntry,
   updateCalorieEntry,
   deleteCalorieEntry,
 } from "@/services/calorieService";
-
-/* ───── 本地模拟数据（暂未对接 API） ───── */
-
-const initialWeightHistory: WeightRecord[] = [
-  { date: "03/10", weight: 71.2 },
-  { date: "03/11", weight: 71.0 },
-  { date: "03/12", weight: 70.8 },
-  { date: "03/13", weight: 70.5 },
-  { date: "03/14", weight: 70.7 },
-  { date: "03/15", weight: 70.3 },
-  { date: "03/16", weight: 70.0 },
-];
-
-const initialProfile: UserProfile = {
-  age: 28,
-  height: 175,
-  weight: 70.0,
-  gender: "male",
-};
 
 /* ───── 工具函数 ───── */
 
@@ -126,6 +103,7 @@ function StatCard({
 
 export default function Home() {
   const { user, token, logout } = useAuth();
+  const { profile, loading: profileLoading } = useUserProfile();
 
   // API data
   const [entries, setEntries] = useState<CalorieEntry[]>([]);
@@ -135,17 +113,10 @@ export default function Home() {
     () => new Date().toISOString().split("T")[0],
   );
 
-  // Local state (not API-backed)
-  const [weightHistory, setWeightHistory] =
-    useState<WeightRecord[]>(initialWeightHistory);
-  const [profile, setProfile] = useState<UserProfile>(initialProfile);
-
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CalorieEntry | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [weightOpen, setWeightOpen] = useState(false);
-  const [newWeight, setNewWeight] = useState("");
 
   // Load entries for selected date
   const loadEntries = useCallback(async () => {
@@ -176,16 +147,19 @@ export default function Home() {
     loadEntries();
   }, [loadEntries]);
 
+  // 从 profile 派生数据
+  const height = profile?.latestHeight?.value ?? 0;
+  const weight = profile?.latestWeight?.value ?? 0;
+  const gender =
+    profile?.gender === "female" ? ("female" as const) : ("male" as const);
+  const age = profile?.birthday ? calculateAge(profile.birthday) : 0;
+  const hasProfile = !!profile && height > 0 && weight > 0 && age > 0;
+
   // Statistics
   const intake = sumCalories(entries, "intake");
   const burn = sumCalories(entries, "burn");
-  const bmr = calculateBMR(profile);
+  const bmr = hasProfile ? calculateBMR({ age, height, weight, gender }) : 0;
   const net = intake - burn - bmr;
-
-  // Weight trend
-  const weights = weightHistory.map((w) => w.weight);
-  const minW = Math.min(...weights) - 0.5;
-  const maxW = Math.max(...weights) + 0.5;
 
   /* ── Event handlers ── */
 
@@ -219,28 +193,6 @@ export default function Home() {
     setDialogOpen(true);
   };
 
-  const handleSaveProfile = (p: UserProfile) => {
-    setProfile(p);
-  };
-
-  const handleUpdateWeight = () => {
-    const w = parseFloat(newWeight);
-    if (isNaN(w) || w <= 0) return;
-    const todayLabel = `${selectedDate.slice(5).replace("-", "/")}`;
-    setWeightHistory((prev) => {
-      const exists = prev.findIndex((r) => r.date === todayLabel);
-      if (exists >= 0) {
-        const next = [...prev];
-        next[exists] = { date: todayLabel, weight: w };
-        return next;
-      }
-      return [...prev, { date: todayLabel, weight: w }];
-    });
-    setProfile((prev) => ({ ...prev, weight: w }));
-    setNewWeight("");
-    setWeightOpen(false);
-  };
-
   const isToday = selectedDate === new Date().toISOString().split("T")[0];
 
   return (
@@ -269,32 +221,43 @@ export default function Home() {
         {/* ── 个人信息摘要 ── */}
         <Card elevation={1} sx={{ mb: 3, bgcolor: "primary.50" }}>
           <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="center"
-              flexWrap="wrap"
-            >
-              <Chip
-                icon={<PersonIcon />}
-                label={`${profile.gender === "male" ? "男" : "女"} · ${profile.age}岁`}
-              />
-              <Chip label={`身高 ${profile.height} cm`} variant="outlined" />
-              <Chip label={`体重 ${profile.weight} kg`} variant="outlined" />
-              <Chip
-                label={`基础代谢 ${bmr} kcal/天`}
-                color="primary"
-                variant="outlined"
-              />
-              <Box sx={{ flexGrow: 1 }} />
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => setWeightOpen(true)}
+            {profileLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+                <CircularProgress size={20} />
+              </Box>
+            ) : hasProfile ? (
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                flexWrap="wrap"
               >
-                更新体重
-              </Button>
-            </Stack>
+                <Chip
+                  icon={<PersonIcon />}
+                  label={`${gender === "male" ? "男" : "女"} · ${age}岁`}
+                />
+                <Chip label={`身高 ${height} cm`} variant="outlined" />
+                <Chip label={`体重 ${weight} kg`} variant="outlined" />
+                <Chip
+                  label={`基础代谢 ${bmr} kcal/天`}
+                  color="primary"
+                  variant="outlined"
+                />
+              </Stack>
+            ) : (
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="body2" color="text.secondary">
+                  请先完善个人信息以计算基础代谢
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setProfileOpen(true)}
+                >
+                  去设置
+                </Button>
+              </Stack>
+            )}
           </CardContent>
         </Card>
 
@@ -350,75 +313,6 @@ export default function Home() {
             />
           </Grid>
         </Grid>
-
-        {/* ── 体重趋势 ── */}
-        <Typography variant="h5" gutterBottom fontWeight="bold">
-          ⚖️ 体重趋势（最近 {weightHistory.length} 天）
-        </Typography>
-        <Card elevation={2} sx={{ mb: 4, p: 2 }}>
-          <Stack spacing={0.8}>
-            {weightHistory.map((w, i) => {
-              const pct = ((w.weight - minW) / (maxW - minW)) * 100;
-              const prev = i > 0 ? weightHistory[i - 1].weight : null;
-              const diff = prev !== null ? w.weight - prev : null;
-              return (
-                <Box
-                  key={w.date}
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                >
-                  <Typography
-                    variant="caption"
-                    sx={{ width: 40, flexShrink: 0 }}
-                  >
-                    {w.date}
-                  </Typography>
-                  <Box
-                    sx={{
-                      flex: 1,
-                      height: 22,
-                      bgcolor: "grey.100",
-                      borderRadius: 1,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: `${Math.max(pct, 8)}%`,
-                        height: "100%",
-                        bgcolor: "primary.main",
-                        borderRadius: 1,
-                        transition: "width 0.3s",
-                      }}
-                    />
-                  </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{ width: 60, textAlign: "right", flexShrink: 0 }}
-                  >
-                    {w.weight} kg
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ width: 50, textAlign: "right", flexShrink: 0 }}
-                    color={
-                      diff === null
-                        ? "text.disabled"
-                        : diff <= 0
-                          ? "success.main"
-                          : "error.main"
-                    }
-                  >
-                    {diff === null
-                      ? "—"
-                      : diff <= 0
-                        ? `↓${Math.abs(diff).toFixed(1)}`
-                        : `↑${diff.toFixed(1)}`}
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Stack>
-        </Card>
 
         {/* ── 记录列表 ── */}
         <Box
@@ -546,43 +440,7 @@ export default function Home() {
         onSubmit={handleSubmitRecord}
         initialData={editingEntry}
       />
-      <ProfileDialog
-        key={String(profileOpen)}
-        open={profileOpen}
-        profile={profile}
-        onClose={() => setProfileOpen(false)}
-        onSave={handleSaveProfile}
-      />
-
-      {/* 体重更新弹窗 */}
-      <Dialog
-        open={weightOpen}
-        onClose={() => setWeightOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>更新体重</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            当前体重: {profile.weight} kg
-          </Typography>
-          <TextField
-            autoFocus
-            label="新体重 (kg)"
-            type="number"
-            fullWidth
-            value={newWeight}
-            onChange={(e) => setNewWeight(e.target.value)}
-            slotProps={{ htmlInput: { step: 0.1 } }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setWeightOpen(false)}>取消</Button>
-          <Button variant="contained" onClick={handleUpdateWeight}>
-            确认
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} />
     </Box>
   );
 }
