@@ -10,6 +10,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import * as api from "@/lib/api";
+import { useUserProfile } from "@/contexts/UserProfileContext";
+import { getFullProfile } from "@/services/userService";
 
 interface User {
   id: string;
@@ -46,19 +48,24 @@ function deleteCookie(name: string) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const { setProfileFromAuth } = useUserProfile();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 初始化：从 localStorage 恢复登录状态
+  // 初始化：从 localStorage 恢复登录状态，并重新获取完整 profile
   useEffect(() => {
     const savedToken = localStorage.getItem(TOKEN_KEY);
     const savedUser = localStorage.getItem(USER_KEY);
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
+      getFullProfile(savedToken)
+        .then((profile) => setProfileFromAuth(profile, savedToken))
+        .catch(() => {});
     }
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveAuth = (token: string, user: User) => {
@@ -69,17 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login(email, password);
-    saveAuth(res.access_token, res.user);
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await api.login(email, password);
+      saveAuth(res.access_token, res.user);
+      setProfileFromAuth(res.user, res.access_token);
+    },
+    [setProfileFromAuth],
+  );
 
   const register = useCallback(
     async (email: string, password: string, nickname?: string) => {
       const res = await api.register(email, password, nickname);
       saveAuth(res.access_token, res.user);
+      setProfileFromAuth(res.user, res.access_token);
     },
-    [],
+    [setProfileFromAuth],
   );
 
   const logout = useCallback(() => {
@@ -88,8 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteCookie(TOKEN_KEY);
     setToken(null);
     setUser(null);
+    setProfileFromAuth(null);
     router.push("/login");
-  }, [router]);
+  }, [router, setProfileFromAuth]);
 
   return (
     <AuthContext.Provider

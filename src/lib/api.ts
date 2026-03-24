@@ -1,8 +1,10 @@
+import type { UserFullProfile } from "@/types/user";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-interface AuthResponse {
+export interface AuthResponse {
   access_token: string;
-  user: { id: string; email: string; nickname: string };
+  user: UserFullProfile;
 }
 
 export interface RequestOptions extends Omit<RequestInit, "headers"> {

@@ -4,11 +4,9 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { getFullProfile } from "@/services/userService";
 import type { UserFullProfile } from "@/types/user";
 
@@ -16,39 +14,45 @@ interface UserProfileContextType {
   profile: UserFullProfile | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
+  setProfileFromAuth: (profile: UserFullProfile | null, token?: string) => void;
 }
 
 const UserProfileContext = createContext<UserProfileContextType | null>(null);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const { user, token } = useAuth();
   const [profile, setProfile] = useState<UserFullProfile | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const setProfileFromAuth = useCallback(
+    (newProfile: UserFullProfile | null, token?: string) => {
+      setProfile(newProfile);
+      if (newProfile === null) {
+        setAuthToken(null);
+      } else if (token !== undefined) {
+        setAuthToken(token);
+      }
+    },
+    [],
+  );
+
   const refreshProfile = useCallback(async () => {
-    if (!token) return;
+    if (!authToken) return;
     setLoading(true);
     try {
-      const data = await getFullProfile(token);
+      const data = await getFullProfile(authToken);
       setProfile(data);
     } catch {
       // 获取失败不阻断使用，保留已有认证状态
     } finally {
       setLoading(false);
     }
-  }, [token]);
-
-  // 登录后自动加载用户信息
-  useEffect(() => {
-    if (user && token) {
-      refreshProfile();
-    } else {
-      setProfile(null);
-    }
-  }, [user, token, refreshProfile]);
+  }, [authToken]);
 
   return (
-    <UserProfileContext.Provider value={{ profile, loading, refreshProfile }}>
+    <UserProfileContext.Provider
+      value={{ profile, loading, refreshProfile, setProfileFromAuth }}
+    >
       {children}
     </UserProfileContext.Provider>
   );

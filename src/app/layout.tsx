@@ -22,9 +22,9 @@ export default function RootLayout({
         <InitColorSchemeScript attribute="class" />
         <AppRouterCacheProvider>
           <ThemeRegistry>
-            <AuthProvider>
-              <UserProfileProvider>{children}</UserProfileProvider>
-            </AuthProvider>
+            <UserProfileProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </UserProfileProvider>
           </ThemeRegistry>
         </AppRouterCacheProvider>
       </body>
