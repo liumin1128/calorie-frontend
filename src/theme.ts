@@ -36,6 +36,8 @@ const theme = createTheme({
             "radial-gradient(1200px 800px at 10% -10%,#ffe8dc 0%,transparent 55%)," +
             "radial-gradient(900px 700px at 90% 0%,#dff7f5 0%,transparent 50%)," +
             "#fff8f3",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
         },
       },
     },
