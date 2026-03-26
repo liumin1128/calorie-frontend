@@ -12,6 +12,8 @@ export interface UserFullProfile {
   gender?: Gender;
   birthday?: string;
   signature?: string;
+  targetWeight?: number | null;
+  healthConditions?: string[] | null;
   latestHeight?: DynamicDataValue | null;
   latestWeight?: DynamicDataValue | null;
 }
@@ -21,6 +23,8 @@ export interface UpdateProfileDto {
   gender?: Gender;
   birthday?: string;
   signature?: string;
+  targetWeight?: number;
+  healthConditions?: string[];
 }
 
 export interface CreateDynamicDataDto {

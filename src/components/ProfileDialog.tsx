@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -12,6 +12,8 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { updateProfile } from "@/services/userService";
@@ -30,6 +32,8 @@ interface FormState {
   signature: string;
   height: number;
   weight: number;
+  targetWeight: number;
+  healthConditions: string[];
 }
 
 function buildInitialForm(
@@ -42,6 +46,8 @@ function buildInitialForm(
     signature: profile?.signature ?? "",
     height: profile?.latestHeight?.value ?? 170,
     weight: profile?.latestWeight?.value ?? 60,
+    targetWeight: profile?.targetWeight ?? 0,
+    healthConditions: profile?.healthConditions ?? [],
   };
 }
 
@@ -52,12 +58,16 @@ export default function ProfileDialog({ open, onClose }: Props) {
   const [form, setForm] = useState<FormState>(() => buildInitialForm(profile));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [healthInput, setHealthInput] = useState("");
+  const [healthInputError, setHealthInputError] = useState<string | null>(null);
 
   // 每次打开弹窗时同步最新 profile 数据
   useEffect(() => {
     if (open) {
       setForm(buildInitialForm(profile));
       setError(null);
+      setHealthInput("");
+      setHealthInputError(null);
     }
   }, [open, profile]);
 
@@ -76,6 +86,8 @@ export default function ProfileDialog({ open, onClose }: Props) {
           gender: form.gender,
           birthday: form.birthday || undefined,
           signature: form.signature || undefined,
+          targetWeight: form.targetWeight > 0 ? form.targetWeight : undefined,
+          healthConditions: form.healthConditions,
         }),
       );
 
@@ -164,6 +176,68 @@ export default function ProfileDialog({ open, onClose }: Props) {
             }
             slotProps={{ htmlInput: { step: 0.1 } }}
           />
+
+          <TextField
+            label="目标体重 (kg)"
+            type="number"
+            value={form.targetWeight || ""}
+            onChange={(e) =>
+              setForm({ ...form, targetWeight: Number(e.target.value) })
+            }
+            slotProps={{ htmlInput: { step: 0.1, min: 30, max: 300 } }}
+          />
+
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              健康状况
+            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 1 }}>
+              {form.healthConditions.map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  size="small"
+                  onDelete={() =>
+                    setForm({
+                      ...form,
+                      healthConditions: form.healthConditions.filter(
+                        (t) => t !== tag,
+                      ),
+                    })
+                  }
+                />
+              ))}
+            </Box>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="输入标签后按 Enter 添加"
+              value={healthInput}
+              onChange={(e) => {
+                setHealthInput(e.target.value);
+                setHealthInputError(null);
+              }}
+              onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const tag = healthInput.trim();
+                if (!tag) return;
+                if (tag.length > 50) {
+                  setHealthInputError("标签最多 50 个字符");
+                  return;
+                }
+                if (!form.healthConditions.includes(tag)) {
+                  setForm({
+                    ...form,
+                    healthConditions: [...form.healthConditions, tag],
+                  });
+                }
+                setHealthInput("");
+              }}
+              error={!!healthInputError}
+              helperText={healthInputError}
+            />
+          </Box>
 
           <TextField
             label="个性签名"
