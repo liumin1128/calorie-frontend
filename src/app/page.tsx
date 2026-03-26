@@ -37,6 +37,7 @@ import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
+import HealthAdviceCard from "@/components/HealthAdviceCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import {
@@ -420,6 +421,13 @@ export default function Home() {
               </Card>
             ))}
           </Stack>
+        )}
+
+        {/* ── AI 健康建议 ── */}
+        {token && (
+          <Box sx={{ mt: 3 }}>
+            <HealthAdviceCard token={token} />
+          </Box>
         )}
       </Container>
 
