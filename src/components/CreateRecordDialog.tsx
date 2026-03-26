@@ -27,6 +27,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (data: CreateCalorieEntryDto) => void | Promise<void>;
   initialData?: CalorieEntry | null;
+  defaultDate?: string;
 }
 
 function getToday() {
@@ -43,6 +44,7 @@ export default function CreateRecordDialog({
   onClose,
   onSubmit,
   initialData,
+  defaultDate,
 }: Props) {
   const isEdit = !!initialData;
   const [type, setType] = useState<CalorieType>("intake");
@@ -75,7 +77,7 @@ export default function CreateRecordDialog({
     setType("intake");
     setTitle("");
     setCalories(0);
-    setDate(getToday());
+    setDate(defaultDate ?? getToday());
     setTime(getNowTime());
     setError(null);
   };

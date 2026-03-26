@@ -439,6 +439,7 @@ export default function Home() {
         onClose={() => setDialogOpen(false)}
         onSubmit={handleSubmitRecord}
         initialData={editingEntry}
+        defaultDate={selectedDate}
       />
       <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} />
     </Box>
