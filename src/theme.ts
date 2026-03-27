@@ -2,14 +2,7 @@
 
 import { createTheme, type Shadows } from "@mui/material/styles";
 
-/* ── 弱阴影：仅保留 1-3 级微弱投影，其余全部去掉 ── */
-const softShadows = Array.from({ length: 25 }, () => "none") as Shadows;
-softShadows[1] = "0 2px 6px rgba(23,37,84,0.06)";
-softShadows[2] = "0 6px 14px rgba(23,37,84,0.08)";
-softShadows[3] = "0 10px 22px rgba(23,37,84,0.10)";
-
 const theme = createTheme({
-  shadows: softShadows,
   shape: { borderRadius: 16 },
   palette: {
     mode: "light",
