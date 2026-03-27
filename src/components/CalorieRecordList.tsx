@@ -16,6 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import ListAltIcon from "@mui/icons-material/ListAlt";
 import type { CalorieEntry } from "@/types/calorie";
 import { formatTime } from "@/utils/calorie";
 
@@ -52,9 +53,12 @@ export default function CalorieRecordList({
           mb: 2,
         }}
       >
-        <Typography variant="h5" fontWeight="bold">
-          📝 {isToday ? "今日记录" : `${selectedDate} 记录`}
-        </Typography>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <ListAltIcon color="primary" />
+          <Typography variant="h5" fontWeight="bold">
+            {isToday ? "今日记录" : `${selectedDate} 记录`}
+          </Typography>
+        </Stack>
         <Button
           variant="contained"
           startIcon={<AddIcon />}

@@ -6,6 +6,7 @@ import Fab from "@mui/material/Fab";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import BarChartIcon from "@mui/icons-material/BarChart";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { type Dayjs } from "dayjs";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -41,9 +42,12 @@ export default function Home() {
     <Box sx={{ flexGrow: 1, pb: 10 }}>
       <Container maxWidth="lg" sx={{ mt: 3 }}>
         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-          <Typography variant="h5" fontWeight="bold">
-            📊 {isToday ? "今日概览" : `${tracker.selectedDate} 概览`}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <BarChartIcon color="primary" />
+            <Typography variant="h5" fontWeight="bold">
+              {isToday ? "今日概览" : `${tracker.selectedDate} 概览`}
+            </Typography>
+          </Stack>
           <DatePicker
             value={dayjs(tracker.selectedDate)}
             onChange={(v: Dayjs | null) =>
