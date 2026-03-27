@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
@@ -9,29 +9,23 @@ import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import { getSuggestion } from "@/services/adviceService";
+import { useHealthAdviceStore } from "@/stores/healthAdviceStore";
 
 interface Props {
   token: string;
 }
 
 export default function HealthAdviceCard({ token }: Props) {
-  const [advice, setAdvice] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const advice = useHealthAdviceStore((s) => s.advice);
+  const loading = useHealthAdviceStore((s) => s.loading);
+  const error = useHealthAdviceStore((s) => s.error);
+  const fetchAdvice = useHealthAdviceStore((s) => s.fetchAdvice);
 
-  const handleFetch = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getSuggestion(token);
-      setAdvice(result.suggestion);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "获取建议失败，请稍后重试");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchAdvice(token);
+  }, [token, fetchAdvice]);
+
+  const handleRefresh = () => fetchAdvice(token, { force: true });
 
   return (
     <Card elevation={2}>
@@ -44,7 +38,7 @@ export default function HealthAdviceCard({ token }: Props) {
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
@@ -58,16 +52,22 @@ export default function HealthAdviceCard({ token }: Props) {
           </Typography>
         )}
 
-        <Button
-          variant={advice ? "outlined" : "contained"}
-          onClick={handleFetch}
-          disabled={loading}
-          startIcon={
-            loading ? <CircularProgress size={16} /> : <AutoAwesomeIcon />
-          }
-        >
-          {loading ? "生成中..." : advice ? "重新获取" : "获取健康建议"}
-        </Button>
+        {loading ? (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <CircularProgress size={18} />
+            <Typography variant="body2" color="text.secondary">
+              生成中...
+            </Typography>
+          </Box>
+        ) : (
+          <Button
+            variant={advice ? "outlined" : "contained"}
+            onClick={advice ? handleRefresh : () => fetchAdvice(token)}
+            startIcon={<AutoAwesomeIcon />}
+          >
+            {advice ? "重新获取" : "获取健康建议"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

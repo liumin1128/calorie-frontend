@@ -1,13 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  getCalorieEntries,
-  createCalorieEntry,
-  updateCalorieEntry,
-  deleteCalorieEntry,
-} from "@/services/calorieService";
+import { useCalorieStore } from "@/stores/calorieStore";
 import type { CalorieEntry, CreateCalorieEntryDto } from "@/types/calorie";
 
 export interface UseCalorieTrackerReturn {
@@ -31,62 +26,46 @@ export interface UseCalorieTrackerReturn {
 export function useCalorieTracker(): UseCalorieTrackerReturn {
   const { token } = useAuth();
 
-  const [entries, setEntries] = useState<CalorieEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(
-    () => new Date().toISOString().split("T")[0],
-  );
+  const entries = useCalorieStore((s) => s.entries);
+  const loading = useCalorieStore((s) => s.loading);
+  const error = useCalorieStore((s) => s.error);
+  const selectedDate = useCalorieStore((s) => s.selectedDate);
+  const storeSetSelectedDate = useCalorieStore((s) => s.setSelectedDate);
+  const fetchEntries = useCalorieStore((s) => s.fetchEntries);
+  const addEntry = useCalorieStore((s) => s.addEntry);
+  const editEntry = useCalorieStore((s) => s.editEntry);
+  const removeEntry = useCalorieStore((s) => s.removeEntry);
+
+  // UI-only state stays local
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CalorieEntry | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const loadEntries = useCallback(async () => {
+  const loadEntries = async () => {
     if (!token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      // endDate 需要传次日，因为后端 new Date("2026-03-23") = UTC 午夜零点，
-      // 当天带时间的记录（如 15:30）会被 $lte 过滤掉
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      const endDate = nextDay.toISOString().split("T")[0];
-
-      const res = await getCalorieEntries(token, {
-        startDate: selectedDate,
-        endDate,
-        pageSize: 100,
-      });
-      setEntries(res.data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, selectedDate]);
+    await fetchEntries(token);
+  };
 
   useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
+    if (token) fetchEntries(token);
+  }, [token, selectedDate, fetchEntries]);
+
+  const setSelectedDate = (date: string) => {
+    storeSetSelectedDate(date);
+  };
 
   const handleSubmitRecord = async (data: CreateCalorieEntryDto) => {
     if (!token) return;
     if (editingEntry) {
-      await updateCalorieEntry(token, editingEntry._id, data);
+      await editEntry(token, editingEntry._id, data);
     } else {
-      await createCalorieEntry(token, data);
+      await addEntry(token, data);
     }
-    await loadEntries();
   };
 
   const handleDeleteRecord = async (id: string) => {
     if (!token) return;
-    try {
-      await deleteCalorieEntry(token, id);
-      setEntries((prev) => prev.filter((e) => e._id !== id));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "删除失败");
-    }
+    await removeEntry(token, id);
   };
 
   const handleOpenCreate = () => {

@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  type ReactNode,
-} from "react";
-import { getFullProfile } from "@/services/userService";
+import { createContext, useContext, useCallback, type ReactNode } from "react";
+import { useUserProfileStore } from "@/stores/userProfileStore";
 import type { UserFullProfile } from "@/types/user";
 
 interface UserProfileContextType {
@@ -20,34 +14,31 @@ interface UserProfileContextType {
 const UserProfileContext = createContext<UserProfileContextType | null>(null);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserFullProfile | null>(null);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const profile = useUserProfileStore((s) => s.profile);
+  const loading = useUserProfileStore((s) => s.loading);
+  const fetchProfile = useUserProfileStore((s) => s.fetchProfile);
+  const clearProfile = useUserProfileStore((s) => s.clearProfile);
+  const setStoreProfile = useUserProfileStore((s) => s.setProfile);
+  const setStoreToken = useUserProfileStore((s) => s.setToken);
 
   const setProfileFromAuth = useCallback(
     (newProfile: UserFullProfile | null, token?: string) => {
-      setProfile(newProfile);
+      setStoreProfile(newProfile);
       if (newProfile === null) {
-        setAuthToken(null);
+        setStoreToken(null);
+        clearProfile();
       } else if (token !== undefined) {
-        setAuthToken(token);
+        setStoreToken(token);
       }
     },
-    [],
+    [setStoreProfile, setStoreToken, clearProfile],
   );
 
   const refreshProfile = useCallback(async () => {
-    if (!authToken) return;
-    setLoading(true);
-    try {
-      const data = await getFullProfile(authToken);
-      setProfile(data);
-    } catch {
-      // 获取失败不阻断使用，保留已有认证状态
-    } finally {
-      setLoading(false);
-    }
-  }, [authToken]);
+    const token = useUserProfileStore.getState().token;
+    if (!token) return;
+    await fetchProfile(token);
+  }, [fetchProfile]);
 
   return (
     <UserProfileContext.Provider
