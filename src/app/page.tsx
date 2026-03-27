@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Button from "@mui/material/Button";
@@ -27,7 +25,6 @@ import AddIcon from "@mui/icons-material/Add";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import LogoutIcon from "@mui/icons-material/Logout";
 import type {
   CalorieEntry,
   CalorieType,
@@ -37,7 +34,6 @@ import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
-import HealthAdviceCard from "@/components/HealthAdviceCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import {
@@ -103,7 +99,7 @@ function StatCard({
 /* ───── 主页面 ───── */
 
 export default function Home() {
-  const { user, token, logout } = useAuth();
+  const { token } = useAuth();
   const { profile, loading: profileLoading } = useUserProfile();
 
   // API data
@@ -198,26 +194,6 @@ export default function Home() {
 
   return (
     <Box sx={{ flexGrow: 1, pb: 10 }}>
-      {/* ── 顶部导航 ── */}
-      <AppBar position="static">
-        <Toolbar>
-          <LocalFireDepartmentIcon sx={{ mr: 1 }} />
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Calorie Tracker
-          </Typography>
-          <Button
-            color="inherit"
-            startIcon={<PersonIcon />}
-            onClick={() => setProfileOpen(true)}
-          >
-            {user?.nickname || "个人信息"}
-          </Button>
-          <Button color="inherit" startIcon={<LogoutIcon />} onClick={logout}>
-            退出
-          </Button>
-        </Toolbar>
-      </AppBar>
-
       <Container maxWidth="lg" sx={{ mt: 3 }}>
         {/* ── 个人信息摘要 ── */}
         <Card elevation={1} sx={{ mb: 3, bgcolor: "primary.50" }}>
@@ -421,13 +397,6 @@ export default function Home() {
               </Card>
             ))}
           </Stack>
-        )}
-
-        {/* ── AI 健康建议 ── */}
-        {token && (
-          <Box sx={{ mt: 3 }}>
-            <HealthAdviceCard token={token} />
-          </Box>
         )}
       </Container>
 
