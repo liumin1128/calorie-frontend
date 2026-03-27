@@ -8,7 +8,6 @@ import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
@@ -25,7 +24,6 @@ interface CalorieRecordListProps {
   loading: boolean;
   error: string | null;
   selectedDate: string;
-  onSelectedDateChange: (date: string) => void;
   onEdit: (entry: CalorieEntry) => void;
   onDelete: (id: string) => void;
   onRetry: () => void;
@@ -37,7 +35,6 @@ export default function CalorieRecordList({
   loading,
   error,
   selectedDate,
-  onSelectedDateChange,
   onEdit,
   onDelete,
   onRetry,
@@ -47,20 +44,6 @@ export default function CalorieRecordList({
 
   return (
     <>
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-        <Typography variant="h5" fontWeight="bold">
-          📊 {isToday ? "今日概览" : `${selectedDate} 概览`}
-        </Typography>
-        <TextField
-          type="date"
-          size="small"
-          value={selectedDate}
-          onChange={(e) => onSelectedDateChange(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ width: 180 }}
-        />
-      </Stack>
-
       <Box
         sx={{
           display: "flex",

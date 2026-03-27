@@ -3,7 +3,11 @@
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs, { type Dayjs } from "dayjs";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
@@ -30,9 +34,25 @@ export default function Home() {
   const hasProfile = !!profile && height > 0 && weight > 0 && age > 0;
   const bmr = hasProfile ? calculateBMR({ age, height, weight, gender }) : 0;
 
+  const isToday =
+    tracker.selectedDate === new Date().toISOString().split("T")[0];
+
   return (
     <Box sx={{ flexGrow: 1, pb: 10 }}>
       <Container maxWidth="lg" sx={{ mt: 3 }}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+          <Typography variant="h5" fontWeight="bold">
+            📊 {isToday ? "今日概览" : `${tracker.selectedDate} 概览`}
+          </Typography>
+          <DatePicker
+            value={dayjs(tracker.selectedDate)}
+            onChange={(v: Dayjs | null) =>
+              v && tracker.setSelectedDate(v.format("YYYY-MM-DD"))
+            }
+            disableFuture
+            slotProps={{ textField: { size: "small", sx: { width: 160 } } }}
+          />
+        </Stack>
         <ProfileSummaryCard
           profile={profile}
           profileLoading={profileLoading}
@@ -44,7 +64,6 @@ export default function Home() {
           loading={tracker.loading}
           error={tracker.error}
           selectedDate={tracker.selectedDate}
-          onSelectedDateChange={tracker.setSelectedDate}
           onEdit={tracker.handleOpenEdit}
           onDelete={tracker.handleDeleteRecord}
           onRetry={tracker.loadEntries}
@@ -68,6 +87,7 @@ export default function Home() {
         initialData={tracker.editingEntry}
         defaultDate={tracker.selectedDate}
       />
+
       <ProfileDialog
         open={tracker.profileOpen}
         onClose={() => tracker.setProfileOpen(false)}
