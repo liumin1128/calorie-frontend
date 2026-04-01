@@ -17,6 +17,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ListAltIcon from "@mui/icons-material/ListAlt";
+import dayjs from "dayjs";
 import type { CalorieEntry } from "@/types/calorie";
 import { formatTime } from "@/utils/calorie";
 
@@ -41,7 +42,7 @@ export default function CalorieRecordList({
   onRetry,
   onOpenCreate,
 }: CalorieRecordListProps) {
-  const isToday = selectedDate === new Date().toISOString().split("T")[0];
+  const isToday = selectedDate === dayjs().format("YYYY-MM-DD");
 
   return (
     <>

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import dayjs from "dayjs";
 import {
   getCalorieEntries,
   createCalorieEntry,
@@ -27,15 +28,13 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
   entries: [],
   loading: false,
   error: null,
-  selectedDate: new Date().toISOString().split("T")[0],
+  selectedDate: dayjs().format("YYYY-MM-DD"),
 
   fetchEntries: async (token: string) => {
     const { selectedDate } = get();
     set({ loading: true, error: null });
     try {
-      const nextDay = new Date(selectedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-      const endDate = nextDay.toISOString().split("T")[0];
+      const endDate = dayjs(selectedDate).add(1, "day").format("YYYY-MM-DD");
       const res = await getCalorieEntries(token, {
         startDate: selectedDate,
         endDate,

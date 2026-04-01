@@ -14,6 +14,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import dayjs from "dayjs";
 import type {
   CalorieType,
   CalorieEntry,
@@ -31,7 +32,7 @@ interface Props {
 }
 
 function getToday() {
-  return new Date().toISOString().split("T")[0];
+  return dayjs().format("YYYY-MM-DD");
 }
 
 function getNowTime() {
@@ -63,7 +64,7 @@ export default function CreateRecordDialog({
       setTitle(initialData.title);
       setCalories(initialData.calories);
       const dt = new Date(initialData.entryDate);
-      setDate(dt.toISOString().split("T")[0]);
+      setDate(dayjs(initialData.entryDate).format("YYYY-MM-DD"));
       setTime(
         `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
       );

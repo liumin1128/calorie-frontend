@@ -37,8 +37,7 @@ export default function Home() {
   const hasProfile = !!profile && height > 0 && weight > 0 && age > 0;
   const bmr = hasProfile ? calculateBMR({ age, height, weight, gender }) : 0;
 
-  const isToday =
-    tracker.selectedDate === new Date().toISOString().split("T")[0];
+  const isToday = tracker.selectedDate === dayjs().format("YYYY-MM-DD");
 
   return (
     <Box sx={{ flexGrow: 1, pb: 10 }}>
