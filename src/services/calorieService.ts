@@ -5,6 +5,7 @@ import type {
   UpdateCalorieEntryDto,
   QueryCalorieEntryParams,
   PaginatedResponse,
+  DailySummaryMap,
 } from "@/types/calorie";
 
 export function createCalorieEntry(token: string, dto: CreateCalorieEntryDto) {
@@ -41,5 +42,16 @@ export function deleteCalorieEntry(token: string, id: string) {
   return request<CalorieEntry>(`/calorie/${encodeURIComponent(id)}`, {
     method: "DELETE",
     token,
+  });
+}
+
+export function getDailySummary(
+  token: string,
+  startDate: string,
+  endDate: string,
+) {
+  return request<DailySummaryMap>("/calorie/daily-summary", {
+    token,
+    params: { startDate, endDate },
   });
 }

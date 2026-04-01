@@ -58,6 +58,15 @@ export interface PaginatedResponse<T> {
   total: number;
 }
 
+/* ───── 每日摘要类型 ───── */
+
+export interface DailySummaryItem {
+  totalIntake: number;
+  totalBurn: number;
+}
+
+export type DailySummaryMap = Record<string, DailySummaryItem>;
+
 export interface PresetItem {
   label: string;
   calories: number;

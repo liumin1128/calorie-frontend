@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCalorieStore } from "@/stores/calorieStore";
+import { useDailySummaryStore } from "@/stores/dailySummaryStore";
 import type { CalorieEntry, CreateCalorieEntryDto } from "@/types/calorie";
 
 export interface UseCalorieTrackerReturn {
@@ -35,6 +36,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   const addEntry = useCalorieStore((s) => s.addEntry);
   const editEntry = useCalorieStore((s) => s.editEntry);
   const removeEntry = useCalorieStore((s) => s.removeEntry);
+  const refreshCalendar = useDailySummaryStore((s) => s.fetchSummary);
 
   // UI-only state stays local
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,11 +63,13 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     } else {
       await addEntry(token, data);
     }
+    refreshCalendar(token, { force: true });
   };
 
   const handleDeleteRecord = async (id: string) => {
     if (!token) return;
     await removeEntry(token, id);
+    refreshCalendar(token, { force: true });
   };
 
   const handleOpenCreate = () => {

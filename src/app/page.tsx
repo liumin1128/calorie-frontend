@@ -19,6 +19,7 @@ import CalorieStatsGrid from "@/components/CalorieStatsGrid";
 import CalorieRecordList from "@/components/CalorieRecordList";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
+import DailyCalorieCalendar from "@/components/DailyCalorieCalendar";
 
 export default function Home() {
   const { profile, loading: profileLoading } = useUserProfile();
@@ -73,6 +74,9 @@ export default function Home() {
           onRetry={tracker.loadEntries}
           onOpenCreate={tracker.handleOpenCreate}
         />
+        <Box sx={{ mt: 3 }}>
+          <DailyCalorieCalendar />
+        </Box>
       </Container>
 
       <Fab
