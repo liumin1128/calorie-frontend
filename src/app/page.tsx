@@ -3,6 +3,7 @@
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Fab from "@mui/material/Fab";
+import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
@@ -58,25 +59,31 @@ export default function Home() {
             slotProps={{ textField: { size: "small", sx: { width: 160 } } }}
           />
         </Stack>
-        <ProfileSummaryCard
-          profile={profile}
-          profileLoading={profileLoading}
-          onOpenProfile={() => tracker.setProfileOpen(true)}
-        />
-        <CalorieStatsGrid intake={intake} burn={burn} bmr={bmr} />
-        <CalorieRecordList
-          entries={tracker.entries}
-          loading={tracker.loading}
-          error={tracker.error}
-          selectedDate={tracker.selectedDate}
-          onEdit={tracker.handleOpenEdit}
-          onDelete={tracker.handleDeleteRecord}
-          onRetry={tracker.loadEntries}
-          onOpenCreate={tracker.handleOpenCreate}
-        />
-        <Box sx={{ mt: 3 }}>
-          <DailyCalorieCalendar />
-        </Box>
+        <Grid container spacing={3}>
+          {/* 左栏：主体内容 */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            <CalorieStatsGrid intake={intake} burn={burn} bmr={bmr} />
+            <CalorieRecordList
+              entries={tracker.entries}
+              loading={tracker.loading}
+              error={tracker.error}
+              selectedDate={tracker.selectedDate}
+              onEdit={tracker.handleOpenEdit}
+              onDelete={tracker.handleDeleteRecord}
+              onRetry={tracker.loadEntries}
+              onOpenCreate={tracker.handleOpenCreate}
+            />
+          </Grid>
+          {/* 右栏：次要内容 */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <ProfileSummaryCard
+              profile={profile}
+              profileLoading={profileLoading}
+              onOpenProfile={() => tracker.setProfileOpen(true)}
+            />
+            <DailyCalorieCalendar />
+          </Grid>
+        </Grid>
       </Container>
 
       <Fab

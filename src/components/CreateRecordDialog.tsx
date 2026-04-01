@@ -191,8 +191,8 @@ export default function CreateRecordDialog({
               textAlign="center"
             >
               {type === "intake"
-                ? `🍽️ 将摄入 ${calories} kcal`
-                : `🏃 将消耗 ${calories} kcal`}
+                ? `🍽️ 将摄入 ${Math.round(calories)} kcal`
+                : `🏃 将消耗 ${Math.round(calories)} kcal`}
             </Typography>
           )}
 

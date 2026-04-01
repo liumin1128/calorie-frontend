@@ -30,7 +30,7 @@ export default function StatCard({
           </Typography>
         </Box>
         <Typography variant="h4" fontWeight="bold" color={color}>
-          {value.toLocaleString()}
+          {Math.round(value).toLocaleString()}
           <Typography
             component="span"
             variant="body1"

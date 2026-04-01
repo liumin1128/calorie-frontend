@@ -130,7 +130,7 @@ export default function CalorieRecordList({
                     }
                   >
                     {entry.type === "intake" ? "+" : "-"}
-                    {entry.calories} kcal
+                    {Math.round(entry.calories)} kcal
                   </Typography>
                   <IconButton
                     size="small"

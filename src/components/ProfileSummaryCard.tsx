@@ -53,7 +53,7 @@ export default function ProfileSummaryCard({
             <Chip label={`身高 ${height} cm`} variant="outlined" />
             <Chip label={`体重 ${weight} kg`} variant="outlined" />
             <Chip
-              label={`基础代谢 ${bmr} kcal/天`}
+              label={`基础代谢 ${Math.round(bmr)} kcal/天`}
               color="primary"
               variant="outlined"
             />

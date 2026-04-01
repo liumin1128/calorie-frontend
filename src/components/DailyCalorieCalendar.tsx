@@ -14,6 +14,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import dayjs from "dayjs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailySummaryStore } from "@/stores/dailySummaryStore";
+import CalorieRing from "@/components/CalorieRing";
 
 const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -167,66 +168,40 @@ export default function DailyCalorieCalendar() {
                     .date(day)
                     .format("YYYY-MM-DD");
                   const item = summaryMap[dateKey];
-                  const intake = item?.totalIntake ?? 0;
-                  const burn = item?.totalBurn ?? 0;
-                  const net = intake - burn;
-                  const hasData = !!item;
+                  const total = (item?.totalIntake ?? 0) + (item?.totalBurn ?? 0);
                   const isToday = isCurrentMonth && day === today;
-
-                  let bgColor = "transparent";
-                  if (hasData) {
-                    bgColor = net > 0 ? "error.50" : "success.50";
-                  }
 
                   return (
                     <Box
                       key={ci}
                       sx={{
-                        p: 0.5,
-                        borderRadius: 1,
-                        bgcolor: hasData ? bgColor : "transparent",
-                        border: isToday ? 2 : 1,
-                        borderColor: isToday ? "primary.main" : "divider",
-                        minHeight: 56,
                         display: "flex",
-                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        py: 0.5,
                       }}
                     >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontWeight: isToday ? "bold" : "normal",
-                          color: isToday ? "primary.main" : "text.primary",
-                        }}
+                      <CalorieRing
+                        value={total}
+                        max={1000}
+                        size={36}
+                        strokeWidth={3}
+                        color={isToday ? "primary.main" : "success.main"}
+                        trackColor={isToday ? "primary.100" : undefined}
                       >
-                        {day}
-                      </Typography>
-                      {hasData && (
-                        <Box sx={{ mt: "auto" }}>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              fontSize: "0.6rem",
-                              color: "error.main",
-                              display: "block",
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            +{intake}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              fontSize: "0.6rem",
-                              color: "success.main",
-                              display: "block",
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            -{burn}
-                          </Typography>
-                        </Box>
-                      )}
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: "0.7rem",
+                            fontWeight: isToday ? "bold" : "normal",
+                            color: isToday ? "primary.main" : "text.primary",
+                            lineHeight: 1,
+                            zIndex: 1,
+                          }}
+                        >
+                          {day}
+                        </Typography>
+                      </CalorieRing>
                     </Box>
                   );
                 })}
