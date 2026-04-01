@@ -13,6 +13,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import dayjs from "dayjs";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCalorieStore } from "@/stores/calorieStore";
 import { useDailySummaryStore } from "@/stores/dailySummaryStore";
 import CalorieRing from "@/components/CalorieRing";
 
@@ -45,6 +46,8 @@ function buildCalendarGrid(month: string): (number | null)[][] {
 
 export default function DailyCalorieCalendar() {
   const { token } = useAuth();
+  const selectedDate = useCalorieStore((s) => s.selectedDate);
+  const setSelectedDate = useCalorieStore((s) => s.setSelectedDate);
   const currentMonth = useDailySummaryStore((s) => s.currentMonth);
   const summaryMap = useDailySummaryStore((s) => s.summaryMap);
   const loading = useDailySummaryStore((s) => s.loading);
@@ -168,17 +171,25 @@ export default function DailyCalorieCalendar() {
                     .date(day)
                     .format("YYYY-MM-DD");
                   const item = summaryMap[dateKey];
-                  const total = (item?.totalIntake ?? 0) + (item?.totalBurn ?? 0);
+                  const total =
+                    (item?.totalIntake ?? 0) + (item?.totalBurn ?? 0);
                   const isToday = isCurrentMonth && day === today;
+                  const isSelected = dateKey === selectedDate;
+                  const isFuture = dayjs(dateKey).isAfter(dayjs(), "day");
 
                   return (
                     <Box
                       key={ci}
+                      onClick={() => !isFuture && setSelectedDate(dateKey)}
                       sx={{
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         py: 0.5,
+                        cursor: isFuture ? "default" : "pointer",
+                        borderRadius: 1,
+                        bgcolor: isSelected ? "primary.50" : "transparent",
+                        "&:hover": isFuture ? {} : { bgcolor: "action.hover" },
                       }}
                     >
                       <CalorieRing
@@ -186,15 +197,27 @@ export default function DailyCalorieCalendar() {
                         max={1000}
                         size={36}
                         strokeWidth={3}
-                        color={isToday ? "primary.main" : "success.main"}
-                        trackColor={isToday ? "primary.100" : undefined}
+                        color={
+                          isSelected
+                            ? "primary.main"
+                            : isToday
+                              ? "primary.main"
+                              : "success.main"
+                        }
+                        trackColor={
+                          isSelected || isToday ? "primary.100" : undefined
+                        }
                       >
                         <Typography
                           variant="caption"
                           sx={{
                             fontSize: "0.7rem",
-                            fontWeight: isToday ? "bold" : "normal",
-                            color: isToday ? "primary.main" : "text.primary",
+                            fontWeight:
+                              isSelected || isToday ? "bold" : "normal",
+                            color:
+                              isSelected || isToday
+                                ? "primary.main"
+                                : "text.primary",
                             lineHeight: 1,
                             zIndex: 1,
                           }}
