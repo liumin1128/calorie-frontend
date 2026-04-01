@@ -9,11 +9,12 @@ import {
 import type { CalorieEntry, CreateCalorieEntryDto } from "@/types/calorie";
 
 interface CalorieState {
+  entriesCache: Record<string, CalorieEntry[]>;
   entries: CalorieEntry[];
   loading: boolean;
   error: string | null;
   selectedDate: string;
-  fetchEntries: (token: string) => Promise<void>;
+  fetchEntries: (token: string, options?: { force?: boolean }) => Promise<void>;
   addEntry: (token: string, data: CreateCalorieEntryDto) => Promise<void>;
   editEntry: (
     token: string,
@@ -25,13 +26,21 @@ interface CalorieState {
 }
 
 export const useCalorieStore = create<CalorieState>((set, get) => ({
+  entriesCache: {},
   entries: [],
   loading: false,
   error: null,
   selectedDate: dayjs().format("YYYY-MM-DD"),
 
-  fetchEntries: async (token: string) => {
-    const { selectedDate } = get();
+  fetchEntries: async (token: string, options?: { force?: boolean }) => {
+    const { selectedDate, entriesCache } = get();
+
+    // 命中缓存且非强制刷新，直接使用缓存
+    if (!options?.force && entriesCache[selectedDate]) {
+      set({ entries: entriesCache[selectedDate], error: null });
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
       const endDate = dayjs(selectedDate).add(1, "day").format("YYYY-MM-DD");
@@ -40,7 +49,10 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
         endDate,
         pageSize: 100,
       });
-      set({ entries: res.data });
+      set((state) => ({
+        entries: res.data,
+        entriesCache: { ...state.entriesCache, [selectedDate]: res.data },
+      }));
     } catch (e) {
       set({ error: e instanceof Error ? e.message : "加载失败" });
     } finally {
@@ -50,18 +62,32 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
 
   addEntry: async (token: string, data: CreateCalorieEntryDto) => {
     await createCalorieEntry(token, data);
-    await get().fetchEntries(token);
+    await get().fetchEntries(token, { force: true });
   },
 
   editEntry: async (token: string, id: string, data: CreateCalorieEntryDto) => {
     await updateCalorieEntry(token, id, data);
-    await get().fetchEntries(token);
+    await get().fetchEntries(token, { force: true });
   },
 
   removeEntry: async (token: string, id: string) => {
+    const { selectedDate } = get();
+    set((state) => {
+      const updated = state.entries.filter((e) => e._id !== id);
+      return {
+        entries: updated,
+        entriesCache: { ...state.entriesCache, [selectedDate]: updated },
+      };
+    });
     await deleteCalorieEntry(token, id);
-    set((state) => ({ entries: state.entries.filter((e) => e._id !== id) }));
   },
 
-  setSelectedDate: (date: string) => set({ selectedDate: date }),
+  setSelectedDate: (date: string) => {
+    const { entriesCache } = get();
+    set({
+      selectedDate: date,
+      // 切换日期时立即展示缓存数据（如有）
+      entries: entriesCache[date] ?? [],
+    });
+  },
 }));

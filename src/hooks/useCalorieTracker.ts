@@ -45,7 +45,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
 
   const loadEntries = async () => {
     if (!token) return;
-    await fetchEntries(token);
+    await fetchEntries(token, { force: true });
   };
 
   useEffect(() => {
