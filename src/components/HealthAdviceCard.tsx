@@ -9,6 +9,7 @@ import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import Markdown from "react-markdown";
 import { useHealthAdviceStore } from "@/stores/healthAdviceStore";
 
 interface Props {
@@ -44,12 +45,49 @@ export default function HealthAdviceCard({ token }: Props) {
         )}
 
         {advice && (
-          <Typography
-            variant="body2"
-            sx={{ whiteSpace: "pre-wrap", mb: 2, color: "text.secondary" }}
-          >
-            {advice}
-          </Typography>
+          <Box sx={{ mb: 2, color: "text.secondary" }}>
+            <Markdown
+              components={{
+                h1: (props) => (
+                  <Typography variant="h5" gutterBottom {...props} />
+                ),
+                h2: (props) => (
+                  <Typography variant="h6" gutterBottom {...props} />
+                ),
+                h3: (props) => (
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    gutterBottom
+                    {...props}
+                  />
+                ),
+                h4: (props) => (
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight="bold"
+                    gutterBottom
+                    {...props}
+                  />
+                ),
+                p: (props) => (
+                  <Typography variant="body2" sx={{ mb: 1 }} {...props} />
+                ),
+                li: (props) => (
+                  <Typography component="li" variant="body2" {...props} />
+                ),
+                strong: (props) => (
+                  <Box
+                    component="strong"
+                    sx={{ fontWeight: "bold" }}
+                    {...props}
+                  />
+                ),
+              }}
+            >
+              {advice}
+            </Markdown>
+          </Box>
         )}
 
         {loading ? (

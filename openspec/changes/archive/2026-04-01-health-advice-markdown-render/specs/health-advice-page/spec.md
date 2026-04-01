@@ -1,18 +1,4 @@
-## ADDED Requirements
-
-### Requirement: 独立健康建议页面路由
-
-系统 SHALL 提供 `/health-advice` 路由，作为 AI 健康建议的专属页面，需要用户登录后访问。
-
-#### Scenario: 已登录用户访问健康建议页
-
-- **WHEN** 已登录用户导航至 `/health-advice`
-- **THEN** 系统渲染健康建议页面，展示 `HealthAdviceCard` 组件
-
-#### Scenario: 未登录用户访问健康建议页
-
-- **WHEN** 未登录用户直接访问 `/health-advice`
-- **THEN** 中间件将其重定向至 `/login`
+## MODIFIED Requirements
 
 ### Requirement: 健康建议页面包含完整交互
 
