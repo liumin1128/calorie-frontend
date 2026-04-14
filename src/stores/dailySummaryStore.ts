@@ -48,7 +48,7 @@ interface DailySummaryState {
 
 export const useDailySummaryStore = create<DailySummaryState>((set, get) => ({
   currentMonth: dayjs().format("YYYY-MM"),
-  summaryMap: loadFromSession(dayjs().format("YYYY-MM")) ?? {},
+  summaryMap: {},
   loading: false,
   error: null,
 
