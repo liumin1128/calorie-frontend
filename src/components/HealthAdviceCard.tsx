@@ -9,8 +9,10 @@ import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import Markdown from "react-markdown";
+import dynamic from "next/dynamic";
 import { useHealthAdviceStore } from "@/stores/healthAdviceStore";
+
+const Markdown = dynamic(() => import("react-markdown"), { ssr: false });
 
 const MD_COMPONENTS = {
   h1: (props: object) => <Typography variant="h5" gutterBottom {...props} />,

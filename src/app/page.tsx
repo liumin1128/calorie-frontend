@@ -9,9 +9,16 @@ import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { type Dayjs } from "dayjs";
 import dynamic from "next/dynamic";
+
+const DatePicker = dynamic(
+  () =>
+    import("@mui/x-date-pickers/DatePicker").then((m) => ({
+      default: m.DatePicker,
+    })),
+  { ssr: false },
+);
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";

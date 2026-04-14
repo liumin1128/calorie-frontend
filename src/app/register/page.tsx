@@ -12,21 +12,8 @@ import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { keyframes } from "@emotion/react";
 import { useAuth } from "@/contexts/AuthContext";
-
-const fadeUp = keyframes`
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-const fadeIn = keyframes`
-  from { opacity: 0; }
-  to   { opacity: 1; }
-`;
-const gentleFloat = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-`;
+import { fadeUp, fadeIn, gentleFloat } from "@/lib/animations";
 
 export default function RegisterPage() {
   const router = useRouter();
