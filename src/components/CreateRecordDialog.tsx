@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -22,6 +22,8 @@ import type {
   PresetItem,
 } from "@/types/calorie";
 import { foodPresets, exercisePresets } from "@/types/calorie";
+import { useAuth } from "@/contexts/AuthContext";
+import ImageUploadAnalyzer from "@/components/ImageUploadAnalyzer";
 
 interface Props {
   open: boolean;
@@ -48,6 +50,7 @@ export default function CreateRecordDialog({
   defaultDate,
 }: Props) {
   const isEdit = !!initialData;
+  const { token } = useAuth();
   const [type, setType] = useState<CalorieType>("intake");
   const [title, setTitle] = useState("");
   const [calories, setCalories] = useState<number>(0);
@@ -55,6 +58,7 @@ export default function CreateRecordDialog({
   const [time, setTime] = useState(getNowTime);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageKey, setImageKey] = useState(0); // 用于重置 ImageUploadAnalyzer
 
   const presets = type === "intake" ? foodPresets : exercisePresets;
 
@@ -81,6 +85,7 @@ export default function CreateRecordDialog({
     setDate(defaultDate ?? getToday());
     setTime(getNowTime());
     setError(null);
+    setImageKey((k) => k + 1);
   };
 
   const handleSubmit = async () => {
@@ -122,6 +127,7 @@ export default function CreateRecordDialog({
                 setType(v);
                 setTitle("");
                 setCalories(0);
+                setImageKey((k) => k + 1);
               }
             }}
             fullWidth
@@ -133,6 +139,17 @@ export default function CreateRecordDialog({
               <FitnessCenterIcon sx={{ mr: 1 }} /> 运动
             </ToggleButton>
           </ToggleButtonGroup>
+
+          {type === "intake" && token && (
+            <ImageUploadAnalyzer
+              key={imageKey}
+              token={token}
+              onAnalyzed={({ title: t, calories: c }) => {
+                setTitle(t);
+                setCalories(c);
+              }}
+            />
+          )}
 
           <Autocomplete
             freeSolo

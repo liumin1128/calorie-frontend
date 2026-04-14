@@ -105,6 +105,25 @@ export const exercisePresets: PresetItem[] = [
   { label: "羽毛球(30分钟)", calories: 200 },
 ];
 
+/* ───── 图片营养分析类型 ───── */
+
+export interface ImageNutritionFood {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  unit: string;
+  quantity: number;
+}
+
+export interface ImageNutritionResponse {
+  foods: ImageNutritionFood[];
+  summary: string;
+  model: string;
+}
+
 /** Mifflin-St Jeor 公式估算基础代谢率 */
 export function calculateBMR(profile: UserProfile): number {
   const base = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age;
