@@ -9,7 +9,7 @@ import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import dayjs, { type Dayjs } from "dayjs";
 import dynamic from "next/dynamic";
 
@@ -55,17 +55,11 @@ export default function Home() {
   const bmr = hasProfile ? calculateBMR({ age, height, weight, gender }) : 0;
   const net = intake - burn;
 
-  const [greeting, setGreeting] = useState("");
-  const [isToday, setIsToday] = useState(false);
-
-  useEffect(() => {
+  const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    setGreeting(hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好");
+    return hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
   }, []);
-
-  useEffect(() => {
-    setIsToday(tracker.selectedDate === dayjs().format("YYYY-MM-DD"));
-  }, [tracker.selectedDate]);
+  const isToday = tracker.selectedDate === dayjs().format("YYYY-MM-DD");
 
   return (
     <Box sx={{ flexGrow: 1, pb: 10 }}>
