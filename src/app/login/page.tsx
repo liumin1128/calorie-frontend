@@ -33,39 +33,6 @@ const gentleFloat = keyframes`
   50%      { transform: translateY(-6px); }
 `;
 
-/* sage-green palette — scoped to login page */
-const c = {
-  sage: "#3d6b4f",
-  sageDark: "#2d5a3f",
-  sageLight: "#e8f3e8",
-  sageMid: "#d0e4d0",
-  warmBg: "#fafaf5",
-  text1: "#2a2a2a",
-  text2: "#8a8a82",
-  border: "#d8d8d0",
-};
-
-/* shared input sx */
-const inputSx = {
-  mb: 3.5,
-  "& .MuiInput-underline:before": { borderBottomColor: c.border },
-  "& .MuiInput-underline:after": { borderBottomColor: c.sage },
-  "& .MuiInputLabel-root": { color: c.text2, fontSize: 14 },
-  "& .MuiInputLabel-root.Mui-focused": { color: c.sage },
-};
-
-/* shared social button sx */
-const socialBtnSx = {
-  py: 1.2,
-  borderRadius: "12px",
-  border: `1px solid ${c.border}`,
-  color: c.text1,
-  textTransform: "none" as const,
-  fontSize: 13,
-  fontWeight: 500,
-  "&.Mui-disabled": { color: c.text2, borderColor: c.border, opacity: 0.55 },
-};
-
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -90,29 +57,38 @@ export default function LoginPage() {
     }
   };
 
+  /* shared input sx */
+  const inputSx = {
+    mb: 3.5,
+    "& .MuiInput-underline:before": { borderBottomColor: "divider" },
+    "& .MuiInput-underline:after": { borderBottomColor: "primary.main" },
+    "& .MuiInputLabel-root": { color: "text.secondary", fontSize: 14 },
+    "& .MuiInputLabel-root.Mui-focused": { color: "primary.main" },
+  };
+
   return (
     <Box
       sx={{
         minHeight: "100vh",
         display: "flex",
-        flexDirection: { xs: "column", md: "row" },
-        background: c.warmBg,
+        flexDirection: { xs: "column", sm: "row" },
+        bgcolor: "background.default",
       }}
     >
       {/* ——— Left: illustration panel ——— */}
       <Box
-        sx={{
+        sx={(theme) => ({
           flex: 1,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          p: { xs: 4, md: 6 },
-          minHeight: { xs: 240, md: "auto" },
-          background: `linear-gradient(160deg, ${c.sageLight} 0%, ${c.sageMid} 55%, #f2ede4 100%)`,
+          p: { xs: 4, sm: 6 },
+          minHeight: { xs: 240, sm: "auto" },
+          background: `linear-gradient(160deg, ${theme.palette.secondary.light} 0%, ${theme.palette.secondary.main} 55%, #f2ede4 100%)`,
           position: "relative",
           overflow: "hidden",
           animation: `${fadeIn} 0.8s ease-out`,
-        }}
+        })}
       >
         {/* decorative circles */}
         <Box
@@ -164,17 +140,17 @@ export default function LoginPage() {
       <Box
         sx={{
           flex: "0 0 auto",
-          width: { xs: "100%", md: 400 },
-          maxWidth: 400,
+          width: { xs: "100%", sm: 480 },
+          maxWidth: 480,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          p: { xs: 3, sm: 5, md: 5 },
+          p: { xs: 3, sm: 5 },
         }}
       >
         <Box
           sx={{
-            maxWidth: 400,
+            maxWidth: 480,
             width: "100%",
             animation: `${fadeUp} 0.7s ease-out`,
           }}
@@ -184,7 +160,7 @@ export default function LoginPage() {
             className={brandFont.className}
             sx={{
               fontSize: { xs: 32, md: 38 },
-              color: c.sage,
+              color: "primary.main",
               letterSpacing: "-0.02em",
               lineHeight: 1.1,
               mb: 0.5,
@@ -193,7 +169,12 @@ export default function LoginPage() {
             CaloTrack
           </Typography>
           <Typography
-            sx={{ fontSize: 15, color: c.text2, mb: 5, fontWeight: 300 }}
+            sx={{
+              fontSize: 15,
+              color: "text.secondary",
+              mb: 5,
+              fontWeight: 300,
+            }}
           >
             记录每一口，掌控每一天
           </Typography>
@@ -238,7 +219,7 @@ export default function LoginPage() {
                         onClick={() => setShowPwd((v) => !v)}
                         edge="end"
                         aria-label={showPwd ? "隐藏密码" : "显示密码"}
-                        sx={{ color: c.text2 }}
+                        sx={{ color: "text.secondary" }}
                       >
                         {showPwd ? (
                           <VisibilityOff fontSize="small" />
@@ -258,20 +239,7 @@ export default function LoginPage() {
               variant="contained"
               fullWidth
               disabled={loading}
-              sx={{
-                py: 1.5,
-                borderRadius: "12px",
-                fontSize: 15,
-                fontWeight: 600,
-                background: c.sage,
-                color: "#fff",
-                boxShadow: "none",
-                "&:hover": {
-                  background: c.sageDark,
-                  boxShadow: "0 4px 14px rgba(61,107,79,0.22)",
-                },
-                "&.Mui-disabled": { background: "#b5c8ba", color: "#fff" },
-              }}
+              sx={{ py: 1.5, fontSize: 15 }}
             >
               {loading ? "登录中..." : "登录"}
             </Button>
@@ -282,8 +250,8 @@ export default function LoginPage() {
             sx={{
               my: 3.5,
               fontSize: 12,
-              color: c.text2,
-              "&::before, &::after": { borderColor: c.border },
+              color: "text.secondary",
+              "&::before, &::after": { borderColor: "divider" },
             }}
           >
             或
@@ -295,7 +263,20 @@ export default function LoginPage() {
               fullWidth
               disabled
               startIcon={<GoogleIcon />}
-              sx={socialBtnSx}
+              sx={(theme) => ({
+                py: 1.2,
+                borderRadius: "12px",
+                border: `1px solid ${theme.palette.divider}`,
+                color: "text.primary",
+                textTransform: "none",
+                fontSize: 13,
+                fontWeight: 500,
+                "&.Mui-disabled": {
+                  color: "text.secondary",
+                  borderColor: "divider",
+                  opacity: 0.55,
+                },
+              })}
             >
               Google
             </Button>
@@ -303,7 +284,20 @@ export default function LoginPage() {
               fullWidth
               disabled
               startIcon={<AppleIcon sx={{ fontSize: 20 }} />}
-              sx={socialBtnSx}
+              sx={(theme) => ({
+                py: 1.2,
+                borderRadius: "12px",
+                border: `1px solid ${theme.palette.divider}`,
+                color: "text.primary",
+                textTransform: "none",
+                fontSize: 13,
+                fontWeight: 500,
+                "&.Mui-disabled": {
+                  color: "text.secondary",
+                  borderColor: "divider",
+                  opacity: 0.55,
+                },
+              })}
             >
               Apple
             </Button>
@@ -314,7 +308,7 @@ export default function LoginPage() {
               textAlign: "center",
               mt: 2.5,
               fontSize: 12,
-              color: c.text2,
+              color: "text.secondary",
               opacity: 0.7,
             }}
           >
@@ -323,14 +317,19 @@ export default function LoginPage() {
 
           {/* Register link */}
           <Typography
-            sx={{ textAlign: "center", mt: 3.5, fontSize: 14, color: c.text2 }}
+            sx={{
+              textAlign: "center",
+              mt: 3.5,
+              fontSize: 14,
+              color: "text.secondary",
+            }}
           >
             没有账户？{" "}
             <Typography
               component="a"
               href="/register"
               sx={{
-                color: c.sage,
+                color: "primary.main",
                 fontWeight: 600,
                 fontSize: 14,
                 textDecoration: "none",
