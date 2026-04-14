@@ -11,7 +11,7 @@ import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { type Dayjs } from "dayjs";
-import { keyframes } from "@emotion/react";
+import dynamic from "next/dynamic";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
@@ -20,15 +20,17 @@ import { useCalorieTracker } from "@/hooks/useCalorieTracker";
 import ProfileSummaryCard from "@/components/ProfileSummaryCard";
 import CalorieStatsGrid from "@/components/CalorieStatsGrid";
 import CalorieRecordList from "@/components/CalorieRecordList";
-import CreateRecordDialog from "@/components/CreateRecordDialog";
-import ProfileDialog from "@/components/ProfileDialog";
 import DailyCalorieCalendar from "@/components/DailyCalorieCalendar";
 import CalorieRing from "@/components/CalorieRing";
+import { fadeUp } from "@/lib/animations";
 
-const fadeUp = keyframes`
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
+const CreateRecordDialog = dynamic(
+  () => import("@/components/CreateRecordDialog"),
+  { ssr: false },
+);
+const ProfileDialog = dynamic(() => import("@/components/ProfileDialog"), {
+  ssr: false,
+});
 
 export default function Home() {
   const { profile, loading: profileLoading } = useUserProfile();

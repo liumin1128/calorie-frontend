@@ -58,11 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedToken = localStorage.getItem(TOKEN_KEY);
     const savedUser = localStorage.getItem(USER_KEY);
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      getFullProfile(savedToken)
-        .then((profile) => setProfileFromAuth(profile, savedToken))
-        .catch(() => {});
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.id && parsed?.email) {
+          setToken(savedToken);
+          setUser(parsed);
+          getFullProfile(savedToken)
+            .then((profile) => setProfileFromAuth(profile, savedToken))
+            .catch(() => {});
+        } else {
+          localStorage.removeItem(USER_KEY);
+        }
+      } catch {
+        localStorage.removeItem(USER_KEY);
+      }
     }
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps

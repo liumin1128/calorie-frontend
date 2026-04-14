@@ -71,7 +71,9 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
   },
 
   removeEntry: async (token: string, id: string) => {
-    const { selectedDate } = get();
+    const { selectedDate, entries, entriesCache } = get();
+    const prevEntries = entries;
+    const prevCache = entriesCache;
     set((state) => {
       const updated = state.entries.filter((e) => e._id !== id);
       return {
@@ -79,7 +81,12 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
         entriesCache: { ...state.entriesCache, [selectedDate]: updated },
       };
     });
-    await deleteCalorieEntry(token, id);
+    try {
+      await deleteCalorieEntry(token, id);
+    } catch (e) {
+      set({ entries: prevEntries, entriesCache: prevCache });
+      throw e;
+    }
   },
 
   setSelectedDate: (date: string) => {

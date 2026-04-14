@@ -4,14 +4,9 @@ import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import { keyframes } from "@emotion/react";
 import { useAuth } from "@/contexts/AuthContext";
 import HealthAdviceCard from "@/components/HealthAdviceCard";
-
-const fadeUp = keyframes`
-  from { opacity: 0; transform: translateY(22px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
+import { fadeUp } from "@/lib/animations";
 
 export default function HealthAdvicePage() {
   const { token } = useAuth();

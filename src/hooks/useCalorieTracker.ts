@@ -63,13 +63,13 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     } else {
       await addEntry(token, data);
     }
-    refreshCalendar(token, { force: true });
+    refreshCalendar(token, { force: true }).catch(() => {});
   };
 
   const handleDeleteRecord = async (id: string) => {
     if (!token) return;
     await removeEntry(token, id);
-    refreshCalendar(token, { force: true });
+    refreshCalendar(token, { force: true }).catch(() => {});
   };
 
   const handleOpenCreate = () => {

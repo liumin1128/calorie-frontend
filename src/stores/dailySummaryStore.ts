@@ -9,17 +9,27 @@ function cacheKey(month: string) {
   return `${STORAGE_PREFIX}${month}`;
 }
 
+const memoryCache = new Map<string, DailySummaryMap>();
+
 function loadFromSession(month: string): DailySummaryMap | null {
+  const mem = memoryCache.get(month);
+  if (mem) return mem;
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(cacheKey(month));
-    return raw ? (JSON.parse(raw) as DailySummaryMap) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw) as DailySummaryMap;
+      memoryCache.set(month, parsed);
+      return parsed;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 function saveToSession(month: string, data: DailySummaryMap) {
+  memoryCache.set(month, data);
   try {
     sessionStorage.setItem(cacheKey(month), JSON.stringify(data));
   } catch {
