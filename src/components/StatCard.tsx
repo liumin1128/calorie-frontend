@@ -1,7 +1,5 @@
 "use client";
 
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 
@@ -21,26 +19,55 @@ export default function StatCard({
   color,
 }: StatCardProps) {
   return (
-    <Card elevation={2}>
-      <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        bgcolor: "background.paper",
+        border: "1px solid",
+        borderColor: "divider",
+        transition: "all 0.2s ease",
+        "&:hover": {
+          boxShadow: "0 4px 16px rgba(61,107,79,0.08)",
+          transform: "translateY(-2px)",
+        },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <Box
+          sx={{
+            width: 36,
+            height: 36,
+            borderRadius: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgba(61,107,79,0.06)",
+          }}
+        >
           {icon}
-          <Typography variant="subtitle2" color="text.secondary">
-            {title}
-          </Typography>
         </Box>
-        <Typography variant="h4" fontWeight="bold" color={color}>
-          {Math.round(value).toLocaleString()}
-          <Typography
-            component="span"
-            variant="body1"
-            color="text.secondary"
-            ml={0.5}
-          >
-            {unit ?? "kcal"}
-          </Typography>
+        <Typography variant="caption" color="text.secondary" fontWeight={500}>
+          {title}
         </Typography>
-      </CardContent>
-    </Card>
+      </Box>
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        color={color}
+        sx={{ lineHeight: 1.2 }}
+      >
+        {Math.round(value).toLocaleString()}
+        <Typography
+          component="span"
+          variant="body2"
+          color="text.secondary"
+          ml={0.5}
+          fontWeight={400}
+        >
+          {unit ?? "kcal"}
+        </Typography>
+      </Typography>
+    </Box>
   );
 }

@@ -1,20 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import NextLink from "next/link";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
+import Box from "@mui/material/Box";
+import Avatar from "@mui/material/Avatar";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
-import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
-import PersonIcon from "@mui/icons-material/Person";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useAuth } from "@/contexts/AuthContext";
-import ProfileDialog from "@/components/ProfileDialog";
 
 const NAV_ITEMS = [
   { label: "首页", href: "/" },
@@ -26,57 +22,90 @@ const NO_NAV_PATHS = ["/login", "/register"];
 export default function TopNavBar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [profileOpen, setProfileOpen] = useState(false);
 
   if (NO_NAV_PATHS.includes(pathname)) return null;
 
-  const currentTab =
-    NAV_ITEMS.find((item) => item.href === pathname)?.href ?? false;
-
   return (
-    <>
-      <AppBar position="sticky">
-        <Toolbar>
-          <LocalFireDepartmentIcon sx={{ mr: 1 }} />
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ mr: 2, flexShrink: 0 }}
-          >
-            Calorie Tracker
-          </Typography>
-          <Tabs
-            value={currentTab}
-            textColor="inherit"
-            sx={{
-              flexGrow: 1,
-              "& .MuiTabs-indicator": { backgroundColor: "white" },
-            }}
-            aria-label="主导航"
-          >
-            {NAV_ITEMS.map((item) => (
-              <Tab
+    <AppBar position="sticky">
+      <Toolbar sx={{ gap: 2 }}>
+        {/* Brand */}
+        <Typography
+          component={NextLink}
+          href="/"
+          sx={{
+            fontSize: 24,
+            fontFamily: '"Instrument Serif", serif',
+            color: "primary.main",
+            textDecoration: "none",
+            letterSpacing: "-0.02em",
+            flexShrink: 0,
+          }}
+        >
+          CaloTrack
+        </Typography>
+
+        {/* Nav pills */}
+        <Box
+          component="nav"
+          sx={{ display: "flex", gap: 0.5, flexGrow: 1, ml: 2 }}
+          aria-label="主导航"
+        >
+          {NAV_ITEMS.map((item) => {
+            const isActive = item.href === pathname;
+            return (
+              <Box
                 key={item.href}
-                label={item.label}
-                value={item.href}
-                href={item.href}
                 component={NextLink}
-              />
-            ))}
-          </Tabs>
-          <Tooltip title={user?.nickname || "个人信息"}>
-            <IconButton color="inherit" onClick={() => setProfileOpen(true)}>
-              <PersonIcon />
-            </IconButton>
+                href={item.href}
+                sx={{
+                  px: 2,
+                  py: 0.75,
+                  borderRadius: 999,
+                  fontSize: 14,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "primary.main" : "text.secondary",
+                  bgcolor: isActive ? "rgba(61,107,79,0.08)" : "transparent",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    bgcolor: isActive
+                      ? "rgba(61,107,79,0.12)"
+                      : "rgba(0,0,0,0.04)",
+                  },
+                }}
+              >
+                {item.label}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* User area */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Tooltip title={user?.nickname || "用户"}>
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                bgcolor: "primary.light",
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              {user?.nickname?.[0]?.toUpperCase() || "U"}
+            </Avatar>
           </Tooltip>
           <Tooltip title="退出登录">
-            <IconButton color="inherit" onClick={logout}>
-              <LogoutIcon />
+            <IconButton
+              size="small"
+              onClick={logout}
+              sx={{ color: "text.secondary" }}
+            >
+              <LogoutIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-        </Toolbar>
-      </AppBar>
-      <ProfileDialog open={profileOpen} onClose={() => setProfileOpen(false)} />
-    </>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 }

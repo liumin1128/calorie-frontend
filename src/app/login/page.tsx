@@ -15,10 +15,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import AppleIcon from "@mui/icons-material/Apple";
 import { keyframes } from "@emotion/react";
-import { Instrument_Serif } from "next/font/google";
 import { useAuth } from "@/contexts/AuthContext";
-
-const brandFont = Instrument_Serif({ weight: "400", subsets: ["latin"] });
 
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(22px); }
@@ -165,9 +162,9 @@ export default function LoginPage() {
         >
           {/* Brand */}
           <Typography
-            className={brandFont.className}
             sx={{
               fontSize: { xs: 32, md: 38 },
+              fontFamily: '"Instrument Serif", serif',
               color: "primary.main",
               letterSpacing: "-0.02em",
               lineHeight: 1.1,

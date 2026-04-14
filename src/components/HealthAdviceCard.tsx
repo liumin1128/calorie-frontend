@@ -29,7 +29,7 @@ export default function HealthAdviceCard({ token }: Props) {
   const handleRefresh = () => fetchAdvice(token, { force: true });
 
   return (
-    <Card elevation={2}>
+    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
       <CardContent>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <AutoAwesomeIcon color="primary" />

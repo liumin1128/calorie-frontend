@@ -78,7 +78,7 @@ export default function DailyCalorieCalendar() {
   const today = dayjs().date();
 
   return (
-    <Card elevation={2}>
+    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
       <CardContent>
         {/* Header */}
         <Box

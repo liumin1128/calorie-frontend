@@ -5,11 +5,12 @@ import ThemeRegistry from "@/components/ThemeRegistry";
 import TopNavBar from "@/components/TopNavBar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Calorie Tracker",
-  description: "Track your daily calorie intake",
+  title: "CaloTrack",
+  description: "记录每一口，掌控每一天",
 };
 
 export default function RootLayout({

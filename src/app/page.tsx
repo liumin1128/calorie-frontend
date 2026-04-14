@@ -2,14 +2,16 @@
 
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import Fab from "@mui/material/Fab";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
-import BarChartIcon from "@mui/icons-material/BarChart";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { type Dayjs } from "dayjs";
+import { keyframes } from "@emotion/react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
@@ -21,12 +23,17 @@ import CalorieRecordList from "@/components/CalorieRecordList";
 import CreateRecordDialog from "@/components/CreateRecordDialog";
 import ProfileDialog from "@/components/ProfileDialog";
 import DailyCalorieCalendar from "@/components/DailyCalorieCalendar";
+import CalorieRing from "@/components/CalorieRing";
+
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
 
 export default function Home() {
   const { profile, loading: profileLoading } = useUserProfile();
   const tracker = useCalorieTracker();
 
-  // 派生统计数据
   const intake = sumCalories(tracker.entries, "intake");
   const burn = sumCalories(tracker.entries, "burn");
   const height = profile?.latestHeight?.value ?? 0;
@@ -36,51 +43,118 @@ export default function Home() {
   const age = profile?.birthday ? calculateAge(profile.birthday) : 0;
   const hasProfile = !!profile && height > 0 && weight > 0 && age > 0;
   const bmr = hasProfile ? calculateBMR({ age, height, weight, gender }) : 0;
-
+  const net = intake - burn;
   const isToday = tracker.selectedDate === dayjs().format("YYYY-MM-DD");
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
 
   return (
     <Box sx={{ flexGrow: 1, pb: 10 }}>
       <Container maxWidth="lg" sx={{ mt: 3 }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <BarChartIcon color="primary" />
-            <Typography variant="h5" fontWeight="bold">
-              {isToday ? "今日概览" : `${tracker.selectedDate} 概览`}
-            </Typography>
-          </Stack>
-          <DatePicker
-            value={dayjs(tracker.selectedDate)}
-            onChange={(v: Dayjs | null) =>
-              v && tracker.setSelectedDate(v.format("YYYY-MM-DD"))
-            }
-            disableFuture
-            slotProps={{ textField: { size: "small", sx: { width: 160 } } }}
-          />
-        </Stack>
         <Grid container spacing={3}>
           {/* 左栏：主体内容 */}
           <Grid size={{ xs: 12, md: 8 }}>
-            <CalorieStatsGrid intake={intake} burn={burn} bmr={bmr} />
-            <CalorieRecordList
-              entries={tracker.entries}
-              loading={tracker.loading}
-              error={tracker.error}
-              selectedDate={tracker.selectedDate}
-              onEdit={tracker.handleOpenEdit}
-              onDelete={tracker.handleDeleteRecord}
-              onRetry={tracker.loadEntries}
-              onOpenCreate={tracker.handleOpenCreate}
-            />
+            {/* Hero Card */}
+            <Card
+              elevation={0}
+              sx={{
+                mb: 3,
+                border: "1px solid",
+                borderColor: "divider",
+                animation: `${fadeUp} 0.7s ease-out`,
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+                {/* Greeting + DatePicker */}
+                <Stack
+                  direction="row"
+                  alignItems="flex-start"
+                  justifyContent="space-between"
+                  sx={{ mb: 3 }}
+                >
+                  <Box>
+                    <Typography variant="h5" fontWeight="bold" gutterBottom>
+                      {greeting}，{profile?.nickname || "你好"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {isToday
+                        ? "今日饮食概览"
+                        : `${tracker.selectedDate} 概览`}
+                    </Typography>
+                  </Box>
+                  <DatePicker
+                    value={dayjs(tracker.selectedDate)}
+                    onChange={(v: Dayjs | null) =>
+                      v && tracker.setSelectedDate(v.format("YYYY-MM-DD"))
+                    }
+                    disableFuture
+                    slotProps={{
+                      textField: { size: "small", sx: { width: 150 } },
+                    }}
+                  />
+                </Stack>
+
+                {/* Hero Calorie Ring */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    mb: 3.5,
+                  }}
+                >
+                  <CalorieRing
+                    value={intake}
+                    max={bmr || 2000}
+                    size={160}
+                    strokeWidth={10}
+                  >
+                    <Stack alignItems="center" sx={{ zIndex: 1 }}>
+                      <Typography
+                        variant="h4"
+                        fontWeight="bold"
+                        color="primary.main"
+                        sx={{ lineHeight: 1.1 }}
+                      >
+                        {Math.round(net)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        净卡路里
+                      </Typography>
+                    </Stack>
+                  </CalorieRing>
+                </Box>
+
+                {/* Mini Stats */}
+                <CalorieStatsGrid intake={intake} burn={burn} bmr={bmr} />
+              </CardContent>
+            </Card>
+
+            {/* Records */}
+            <Box sx={{ animation: `${fadeUp} 0.7s ease-out 0.15s both` }}>
+              <CalorieRecordList
+                entries={tracker.entries}
+                loading={tracker.loading}
+                error={tracker.error}
+                selectedDate={tracker.selectedDate}
+                onEdit={tracker.handleOpenEdit}
+                onDelete={tracker.handleDeleteRecord}
+                onRetry={tracker.loadEntries}
+                onOpenCreate={tracker.handleOpenCreate}
+              />
+            </Box>
           </Grid>
-          {/* 右栏：次要内容 */}
+
+          {/* 右栏 */}
           <Grid size={{ xs: 12, md: 4 }}>
-            <ProfileSummaryCard
-              profile={profile}
-              profileLoading={profileLoading}
-              onOpenProfile={() => tracker.setProfileOpen(true)}
-            />
-            <DailyCalorieCalendar />
+            <Box sx={{ animation: `${fadeUp} 0.7s ease-out 0.2s both` }}>
+              <ProfileSummaryCard
+                profile={profile}
+                profileLoading={profileLoading}
+                onOpenProfile={() => tracker.setProfileOpen(true)}
+              />
+              <DailyCalorieCalendar />
+            </Box>
           </Grid>
         </Grid>
       </Container>

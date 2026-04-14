@@ -22,7 +22,7 @@ export default function CalorieStatsGrid({
   const net = intake - burn - bmr;
 
   return (
-    <Grid container spacing={2} sx={{ mb: 4 }}>
+    <Grid container spacing={2}>
       <Grid size={{ xs: 6, md: 3 }}>
         <StatCard
           title="饮食摄入"
