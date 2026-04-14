@@ -64,6 +64,14 @@ export default function LoginPage() {
     "& .MuiInput-underline:after": { borderBottomColor: "primary.main" },
     "& .MuiInputLabel-root": { color: "text.secondary", fontSize: 14 },
     "& .MuiInputLabel-root.Mui-focused": { color: "primary.main" },
+    /* 覆盖浏览器 autofill 蓝色背景 */
+    "& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus":
+      {
+        WebkitBoxShadow: "0 0 0 100px #fafaf5 inset",
+        WebkitTextFillColor: "#2a2a2a",
+        caretColor: "#2a2a2a",
+        transition: "background-color 5000s ease-in-out 0s",
+      },
   };
 
   return (
