@@ -61,21 +61,40 @@ async function detectWithNative(file: File): Promise<ScanResult | null> {
  * 通过 Canvas 将图片重绘一遍——浏览器渲染 <img> 时会自动应用 EXIF 旋转，
  * 从而得到方向正确的像素数据，再传给解码器。
  */
+/**
+ * iOS 拍摄的图片存在两个问题：
+ * 1. 带有 EXIF 旋转信息，html5-qrcode 不处理 EXIF 导致识别失败
+ * 2. 分辨率极高（12~48MP），iOS Canvas 处理超大图片会受内存限制而静默失败
+ *
+ * 解决方案：通过 Canvas 重绘时同时限制最大边长，浏览器渲染 <img> 会自动
+ * 应用 EXIF 旋转，Canvas 导出的数据方向正确且尺寸合理。
+ */
+const MAX_DIM = 1920;
+
 async function normalizeOrientation(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
+
+      // 等比缩放，长边不超过 MAX_DIM
+      let { naturalWidth: w, naturalHeight: h } = img;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        const scale = MAX_DIM / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+
       const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         resolve(file);
         return;
       }
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, w, h);
       canvas.toBlob(
         (blob) => {
           if (!blob) {
@@ -85,7 +104,7 @@ async function normalizeOrientation(file: File): Promise<File> {
           resolve(new File([blob], file.name, { type: "image/jpeg" }));
         },
         "image/jpeg",
-        0.95,
+        0.92,
       );
     };
     img.onerror = () => {
@@ -150,7 +169,11 @@ export default function BarcodeScanner({ open, onClose }: Props) {
 
   /* ---- Dialog 关闭时重置 ---- */
   useEffect(() => {
-    if (!open) reset();
+    if (!open) {
+      // 使用微任务避免在 effect 体内同步调用 setState
+      const id = setTimeout(reset, 0);
+      return () => clearTimeout(id);
+    }
   }, [open, reset]);
 
   /* ---- 识别图片中的条码 ---- */
