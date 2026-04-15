@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
 import Dialog from "@mui/material/Dialog";
 import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -12,8 +14,29 @@ import Alert from "@mui/material/Alert";
 import CloseIcon from "@mui/icons-material/Close";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
-import type { BarcodeNutritionPreview as BarcodeNutritionPreviewData } from "@/types/calorie";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import WaterDropIcon from "@mui/icons-material/WaterDrop";
+import type {
+  BarcodeNutritionPreview as BarcodeNutritionPreviewData,
+  MineralsInfo,
+} from "@/types/calorie";
 import { detectBarcodeFromFile, type ScanResult } from "@/lib/barcodeScanner";
+
+/* ---------- 常量 ---------- */
+const mineralLabels: {
+  key: keyof MineralsInfo;
+  label: string;
+  unit: string;
+}[] = [
+  { key: "sodium", label: "钠", unit: "mg" },
+  { key: "potassium", label: "钾", unit: "mg" },
+  { key: "calcium", label: "钙", unit: "mg" },
+  { key: "iron", label: "铁", unit: "mg" },
+  { key: "zinc", label: "锌", unit: "mg" },
+  { key: "magnesium", label: "镁", unit: "mg" },
+  { key: "phosphorus", label: "磷", unit: "mg" },
+  { key: "selenium", label: "硒", unit: "μg" },
+];
 
 /* ---------- 工具函数 ---------- */
 function fmt(v: number | undefined, unit: string) {
@@ -42,6 +65,54 @@ interface Props {
 
 type Phase = "pick" | "detecting" | "querying" | "preview" | "error";
 
+/* ---------- 子组件：核心指标卡片 ---------- */
+function HeroMetric({
+  icon,
+  value,
+  unit,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  unit: string;
+  label: string;
+}) {
+  return (
+    <Box
+      sx={{
+        flex: 1,
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 2,
+        py: 1.5,
+        px: 1.5,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 0.5,
+      }}
+    >
+      <Box sx={{ color: "primary.main", lineHeight: 0 }}>{icon}</Box>
+      <Stack direction="row" alignItems="baseline" spacing={0.5}>
+        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1 }}>
+          {value}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {unit}
+        </Typography>
+      </Stack>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ fontSize: "0.7rem" }}
+      >
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
+/* ---------- 主组件 ---------- */
 export default function BarcodeScanner({
   open,
   loading,
@@ -121,6 +192,24 @@ export default function BarcodeScanner({
   const ok = canConfirm(preview);
   const busy = loading || submitting;
 
+  /* ---- 营养素条目 ---- */
+  const nutrientItems = preview
+    ? [
+        { label: "蛋白质", value: preview.nutrition?.protein, unit: "g" },
+        { label: "碳水", value: preview.nutrition?.carbohydrates, unit: "g" },
+        { label: "脂肪", value: preview.nutrition?.fat, unit: "g" },
+        { label: "纤维", value: preview.nutrition?.fiber, unit: "g" },
+      ].filter((i) => i.value != null)
+    : [];
+
+  const mineralItems = preview?.minerals
+    ? mineralLabels
+        .map((m) => ({ ...m, value: preview.minerals?.[m.key] }))
+        .filter((i) => i.value != null)
+    : [];
+
+  const hasSecondary = nutrientItems.length > 0 || mineralItems.length > 0;
+
   return (
     <Dialog
       open={open}
@@ -130,7 +219,7 @@ export default function BarcodeScanner({
       slotProps={{
         paper: {
           sx: {
-            borderRadius: 4,
+            borderRadius: 3,
             border: "1px solid",
             borderColor: "divider",
             overflow: "hidden",
@@ -139,7 +228,17 @@ export default function BarcodeScanner({
       }}
     >
       {/* ── 标题栏 ── */}
-      <Stack direction="row" alignItems="center" sx={{ px: 2.5, pt: 2, pb: 1 }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{
+          px: 2.5,
+          pt: 2,
+          pb: 1.5,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
         <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 600 }}>
           扫码识别
         </Typography>
@@ -149,15 +248,15 @@ export default function BarcodeScanner({
       </Stack>
 
       {/* ── 内容区 ── */}
-      <Box sx={{ px: 2.5, pb: 1 }}>
+      <Box sx={{ px: 2.5, py: 2 }}>
         {/* 选图阶段 */}
         {phase === "pick" && (
-          <Stack spacing={1.5} sx={{ py: 3 }}>
+          <Stack spacing={1.5} sx={{ py: 2 }}>
             <Button
               variant="contained"
               startIcon={<CameraAltIcon />}
               onClick={() => cameraRef.current?.click()}
-              sx={{ borderRadius: 3, py: 1.2 }}
+              sx={{ py: 1.2 }}
               fullWidth
             >
               拍照扫描
@@ -166,7 +265,7 @@ export default function BarcodeScanner({
               variant="outlined"
               startIcon={<PhotoLibraryIcon />}
               onClick={() => albumRef.current?.click()}
-              sx={{ borderRadius: 3, py: 1.2 }}
+              sx={{ py: 1.2 }}
               fullWidth
             >
               相册选图
@@ -186,8 +285,8 @@ export default function BarcodeScanner({
 
         {/* 错误阶段 */}
         {phase === "error" && (
-          <Stack spacing={2} sx={{ py: 2 }}>
-            <Alert severity="warning" sx={{ borderRadius: 3 }}>
+          <Stack spacing={2} sx={{ py: 1 }}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
               {error || localError}
             </Alert>
           </Stack>
@@ -195,22 +294,25 @@ export default function BarcodeScanner({
 
         {/* 预览阶段 */}
         {phase === "preview" && preview && (
-          <Stack spacing={2} sx={{ py: 1 }}>
+          <Stack spacing={2}>
             {error && (
-              <Alert severity="warning" sx={{ borderRadius: 3 }}>
+              <Alert severity="warning" sx={{ borderRadius: 2 }}>
                 {error}
               </Alert>
             )}
 
             {!ok && (
-              <Alert severity="warning" sx={{ borderRadius: 3 }}>
+              <Alert severity="warning" sx={{ borderRadius: 2 }}>
                 该商品缺少热量数据，暂不能添加到记录
               </Alert>
             )}
 
-            {/* 商品信息 */}
+            {/* 商品名称 + 副信息 */}
             <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, mb: 0.25 }}
+              >
                 {preview.name}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -220,71 +322,95 @@ export default function BarcodeScanner({
               </Typography>
             </Box>
 
-            {/* 热量 */}
-            <Box
-              sx={{
-                borderRadius: 3,
-                bgcolor: "secondary.light",
-                px: 2,
-                py: 1.5,
-                textAlign: "center",
-              }}
-            >
-              <Typography
-                variant="h4"
-                sx={{ fontWeight: 700, color: "primary.dark", lineHeight: 1.2 }}
-              >
-                {fmt(preview.calories, "")}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                kcal
-              </Typography>
-            </Box>
-
-            {/* 三大营养素 */}
-            <Stack direction="row" spacing={0}>
-              {[
-                {
-                  label: "蛋白质",
-                  value: preview.nutrition?.protein,
-                  unit: "g",
-                },
-                {
-                  label: "碳水",
-                  value: preview.nutrition?.carbohydrates,
-                  unit: "g",
-                },
-                { label: "脂肪", value: preview.nutrition?.fat, unit: "g" },
-              ].map((n) => (
-                <Box key={n.label} sx={{ flex: 1, textAlign: "center" }}>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: 600, lineHeight: 1.2 }}
-                  >
-                    {fmt(n.value, "")}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {n.label}({n.unit})
-                  </Typography>
-                </Box>
-              ))}
+            {/* 核心指标：卡路里 + 水分 */}
+            <Stack direction="row" spacing={1.5}>
+              <HeroMetric
+                icon={<LocalFireDepartmentIcon fontSize="small" />}
+                value={fmt(preview.calories, "")}
+                unit="kcal"
+                label="热量"
+              />
+              <HeroMetric
+                icon={<WaterDropIcon fontSize="small" />}
+                value={fmt(preview.water, "")}
+                unit="ml"
+                label="水分"
+              />
             </Stack>
+
+            {/* 次要信息：营养成分 + 微量元素 */}
+            {hasSecondary && (
+              <>
+                <Divider />
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mb: 1, display: "block" }}
+                  >
+                    营养成分
+                    {preview.nutritionDataPer
+                      ? `（每 ${preview.nutritionDataPer}）`
+                      : ""}
+                  </Typography>
+                  <Stack
+                    direction="row"
+                    spacing={0.75}
+                    useFlexGap
+                    flexWrap="wrap"
+                  >
+                    {nutrientItems.map((n) => (
+                      <Chip
+                        key={n.label}
+                        label={`${n.label} ${fmt(n.value, n.unit)}`}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 1,
+                          height: 24,
+                          fontSize: "0.72rem",
+                        }}
+                      />
+                    ))}
+                    {mineralItems.map((m) => (
+                      <Chip
+                        key={m.label}
+                        label={`${m.label} ${fmt(m.value, m.unit)}`}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 1,
+                          height: 24,
+                          fontSize: "0.72rem",
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              </>
+            )}
           </Stack>
         )}
       </Box>
 
       {/* ── 操作栏 ── */}
-      <Stack direction="row" spacing={1} sx={{ px: 2.5, pb: 2.5, pt: 1 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          px: 2.5,
+          pb: 2.5,
+          pt: 0.5,
+          borderTop: phase === "preview" ? "1px solid" : "none",
+          borderColor: "divider",
+        }}
+      >
         {phase === "error" && (
           <>
-            <Button onClick={handleClose} sx={{ flex: 1, borderRadius: 3 }}>
+            <Button onClick={handleClose} sx={{ flex: 1 }}>
               关闭
             </Button>
-            <Button
-              variant="outlined"
-              onClick={handleRetry}
-              sx={{ flex: 1, borderRadius: 3 }}
-            >
+            <Button variant="outlined" onClick={handleRetry} sx={{ flex: 1 }}>
               重新扫码
             </Button>
           </>
@@ -295,7 +421,7 @@ export default function BarcodeScanner({
             <Button
               onClick={handleRetry}
               disabled={submitting}
-              sx={{ flex: 1, borderRadius: 3 }}
+              sx={{ flex: 1 }}
             >
               重新扫码
             </Button>
@@ -303,7 +429,7 @@ export default function BarcodeScanner({
               variant="contained"
               onClick={() => void onConfirm()}
               disabled={!ok || submitting}
-              sx={{ flex: 1, borderRadius: 3 }}
+              sx={{ flex: 1 }}
             >
               {submitting ? "添加中..." : "添加到记录"}
             </Button>
@@ -311,7 +437,7 @@ export default function BarcodeScanner({
         )}
 
         {phase === "pick" && (
-          <Button onClick={handleClose} fullWidth sx={{ borderRadius: 3 }}>
+          <Button onClick={handleClose} fullWidth>
             取消
           </Button>
         )}

@@ -30,7 +30,6 @@ function buildBarcodeEntryDto(
     ).toISOString(),
     mealType: getDefaultMealType(),
     source: "barcode",
-    externalId: preview.barcode,
     ...(preview.entryWater != null ? { water: preview.entryWater } : {}),
     ...(description ? { description } : {}),
     ...(preview.entryNutrition ? { nutrition: preview.entryNutrition } : {}),
@@ -273,6 +272,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
         buildBarcodeEntryDto(barcodePreviewData, selectedDate),
       );
       resetBarcodePreviewState();
+      setQrScannerOpen(false);
     } catch (error) {
       setBarcodePreviewError(
         error instanceof Error ? error.message : "添加条码记录失败",
