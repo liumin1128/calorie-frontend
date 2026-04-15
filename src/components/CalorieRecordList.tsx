@@ -146,8 +146,7 @@ function IntakeActions({
     {
       type: "qr-code",
       icon: <QrCodeScannerIcon fontSize="small" />,
-      tip: "二维码识别（即将支持）",
-      disabled: true,
+      tip: "扫码识别",
     },
     {
       type: "manual-diet",

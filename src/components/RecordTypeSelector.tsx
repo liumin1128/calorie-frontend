@@ -48,9 +48,8 @@ const entryOptions: {
   {
     type: "qr-code",
     icon: <QrCodeScannerIcon />,
-    title: "二维码识别",
+    title: "扫码识别",
     description: "扫描食品包装条码",
-    disabled: true,
   },
   {
     type: "manual-diet",

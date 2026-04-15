@@ -48,6 +48,9 @@ const AiAnalysisPreview = dynamic(
   () => import("@/components/AiAnalysisPreview"),
   { ssr: false },
 );
+const BarcodeScanner = dynamic(() => import("@/components/BarcodeScanner"), {
+  ssr: false,
+});
 
 export default function Home() {
   const { profile, loading: profileLoading } = useUserProfile();
@@ -221,6 +224,11 @@ export default function Home() {
       <ProfileDialog
         open={tracker.profileOpen}
         onClose={() => tracker.setProfileOpen(false)}
+      />
+
+      <BarcodeScanner
+        open={tracker.qrScannerOpen}
+        onClose={tracker.handleCloseQrScanner}
       />
     </Box>
   );

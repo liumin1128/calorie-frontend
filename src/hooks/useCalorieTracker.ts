@@ -24,6 +24,7 @@ export interface UseCalorieTrackerReturn {
   lockedType: CalorieType | null;
   autoTriggerImage: boolean;
   aiPreviewOpen: boolean;
+  qrScannerOpen: boolean;
   loadEntries: () => Promise<void>;
   handleSubmitRecord: (data: CreateCalorieEntryDto) => Promise<void>;
   handleBatchSubmitRecords: (records: CreateCalorieEntryDto[]) => Promise<void>;
@@ -37,6 +38,7 @@ export interface UseCalorieTrackerReturn {
     type: "ai-image" | "qr-code" | "manual-diet" | "exercise",
   ) => void;
   handleCloseAiPreview: () => void;
+  handleCloseQrScanner: () => void;
 }
 
 export function useCalorieTracker(): UseCalorieTrackerReturn {
@@ -61,6 +63,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   const [lockedType, setLockedType] = useState<CalorieType | null>(null);
   const [autoTriggerImage, setAutoTriggerImage] = useState(false);
   const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
 
   const loadEntries = async () => {
     if (!token) return;
@@ -148,7 +151,9 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
         setAutoTriggerImage(false);
         setDialogOpen(true);
         break;
-      // "qr-code" 不做处理，面板已 disabled
+      case "qr-code":
+        setQrScannerOpen(true);
+        break;
     }
   };
 
@@ -177,5 +182,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     handleCloseSelector,
     handleSelectEntryType,
     handleCloseAiPreview,
+    qrScannerOpen,
+    handleCloseQrScanner: () => setQrScannerOpen(false),
   };
 }
