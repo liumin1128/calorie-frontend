@@ -341,7 +341,7 @@ export default function CalorieRecordList({
         loading={loading}
         onEdit={onEdit}
         onDelete={onDelete}
-        onAdd={onOpenCreate}
+        onAdd={() => onSelectEntryType("exercise")}
       />
     </Stack>
   );

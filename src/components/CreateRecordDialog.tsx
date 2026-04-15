@@ -110,6 +110,9 @@ export default function CreateRecordDialog({
   const [mealType, setMealType] = useState<MealType>(
     initialData?.mealType ?? getDefaultMealType,
   );
+  const [duration, setDuration] = useState<number | "">(
+    initialData?.duration ?? "",
+  );
 
   const effectiveType = lockedType ?? type;
   const presets = effectiveType === "intake" ? foodPresets : exercisePresets;
@@ -130,6 +133,7 @@ export default function CreateRecordDialog({
     setFiber("");
     setWater("");
     setMealType(getDefaultMealType());
+    setDuration("");
   }, [defaultDate, lockedType]);
 
   useEffect(() => {
@@ -149,6 +153,7 @@ export default function CreateRecordDialog({
       setFiber(initialData.nutrition?.fiber ?? "");
       setWater(initialData.water ?? "");
       setMealType(initialData.mealType ?? getDefaultMealType());
+      setDuration(initialData.duration ?? "");
     } else if (open) {
       handleReset();
     }
@@ -186,6 +191,9 @@ export default function CreateRecordDialog({
         ...(effectiveType === "intake" && hasNutrition ? { nutrition } : {}),
         ...(effectiveType === "intake" && water !== ""
           ? { water: Number(water) }
+          : {}),
+        ...(effectiveType === "burn" && duration !== ""
+          ? { duration: Number(duration) }
           : {}),
       });
       handleReset();
@@ -260,10 +268,33 @@ export default function CreateRecordDialog({
             if (value && typeof value === "object") {
               setTitle((value as PresetItem).label);
               setCalories((value as PresetItem).calories);
+              if ((value as PresetItem).duration) {
+                setDuration((value as PresetItem).duration!);
+              }
             }
           }}
           onInputChange={(_, value) => setTitle(value)}
           inputValue={title}
+          renderOption={(props, option) => {
+            const preset = option as PresetItem;
+            return (
+              <li {...props} key={preset.label}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    width: "100%",
+                  }}
+                >
+                  <span>{preset.label}</span>
+                  <Typography variant="caption" color="text.secondary">
+                    {preset.duration ? `${preset.duration}分钟 · ` : ""}
+                    {preset.calories} kcal
+                  </Typography>
+                </Box>
+              </li>
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -290,6 +321,21 @@ export default function CreateRecordDialog({
           onChange={(e) => setCalories(Number(e.target.value))}
           sx={fieldSx}
         />
+
+        {/* 运动时长（仅运动） */}
+        {effectiveType === "burn" && (
+          <TextField
+            variant="standard"
+            label="运动时长 (分钟)"
+            type="number"
+            value={duration}
+            onChange={(e) =>
+              setDuration(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            placeholder="例如 30"
+            sx={fieldSx}
+          />
+        )}
 
         {/* 餐食类型（仅摄入） */}
         {effectiveType === "intake" && (

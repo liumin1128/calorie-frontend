@@ -63,6 +63,7 @@ export interface CalorieEntry {
   externalId?: string;
   nutrition?: NutritionInfo;
   minerals?: MineralsInfo;
+  duration?: number; // 运动时长（分钟）
   entryDate: string;
   createdAt: string;
   updatedAt: string;
@@ -80,6 +81,7 @@ export interface CreateCalorieEntryDto {
   externalId?: string;
   nutrition?: NutritionInfo;
   minerals?: MineralsInfo;
+  duration?: number; // 运动时长（分钟）
 }
 
 export type UpdateCalorieEntryDto = Partial<CreateCalorieEntryDto>;
@@ -109,6 +111,7 @@ export type DailySummaryMap = Record<string, DailySummaryItem>;
 export interface PresetItem {
   label: string;
   calories: number;
+  duration?: number; // 运动时长（分钟）
 }
 
 export const foodPresets: PresetItem[] = [
@@ -131,17 +134,17 @@ export const foodPresets: PresetItem[] = [
 ];
 
 export const exercisePresets: PresetItem[] = [
-  { label: "跑步(30分钟)", calories: 300 },
-  { label: "快走(30分钟)", calories: 150 },
-  { label: "游泳(30分钟)", calories: 250 },
-  { label: "骑自行车(30分钟)", calories: 200 },
-  { label: "瑜伽(30分钟)", calories: 120 },
-  { label: "力量训练(30分钟)", calories: 200 },
-  { label: "跳绳(15分钟)", calories: 180 },
-  { label: "散步(30分钟)", calories: 100 },
-  { label: "爬楼梯(15分钟)", calories: 130 },
-  { label: "打篮球(30分钟)", calories: 240 },
-  { label: "羽毛球(30分钟)", calories: 200 },
+  { label: "跑步", calories: 300, duration: 30 },
+  { label: "快走", calories: 150, duration: 30 },
+  { label: "游泳", calories: 250, duration: 30 },
+  { label: "骑自行车", calories: 200, duration: 30 },
+  { label: "瑜伽", calories: 120, duration: 30 },
+  { label: "力量训练", calories: 200, duration: 30 },
+  { label: "跳绳", calories: 180, duration: 15 },
+  { label: "散步", calories: 100, duration: 30 },
+  { label: "爬楼梯", calories: 130, duration: 15 },
+  { label: "打篮球", calories: 240, duration: 30 },
+  { label: "羽毛球", calories: 200, duration: 30 },
 ];
 
 /* ───── 图片营养分析类型 ───── */
