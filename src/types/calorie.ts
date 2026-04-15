@@ -165,6 +165,90 @@ export interface ImageNutritionResponse {
   model: string;
 }
 
+/* ───── 条码营养预览类型 ───── */
+
+export interface BarcodeFoodResponse {
+  name: string | null;
+  imageUrl: string | null;
+  brand: string | null;
+  quantity: string | null;
+  nutritionDataPer?: string | null;
+  productQuantity?: number | null;
+  productQuantityUnit?: string | null;
+  calories: number | null;
+  energyKj?: number | null;
+  water: number | null;
+  nutrition: {
+    protein: number | null;
+    fat: number | null;
+    saturatedFat?: number | null;
+    carbohydrates: number | null;
+    sugars?: number | null;
+    fiber: number | null;
+    salt?: number | null;
+  };
+  minerals: {
+    calcium?: number | null;
+    magnesium?: number | null;
+    potassium?: number | null;
+    sodium?: number | null;
+    phosphorus?: number | null;
+    iron?: number | null;
+    zinc?: number | null;
+    manganese?: number | null;
+    copper?: number | null;
+    selenium?: number | null;
+    iodine?: number | null;
+    chromium?: number | null;
+    fluoride?: number | null;
+  };
+  totalCalories?: number | null;
+  totalWater?: number | null;
+  totalNutrition?: {
+    protein: number | null;
+    fat: number | null;
+    saturatedFat?: number | null;
+    carbohydrates: number | null;
+    sugars?: number | null;
+    fiber: number | null;
+    salt?: number | null;
+  } | null;
+  totalMinerals?: {
+    calcium?: number | null;
+    magnesium?: number | null;
+    potassium?: number | null;
+    sodium?: number | null;
+    phosphorus?: number | null;
+    iron?: number | null;
+    zinc?: number | null;
+    manganese?: number | null;
+    copper?: number | null;
+    selenium?: number | null;
+    iodine?: number | null;
+    chromium?: number | null;
+    fluoride?: number | null;
+  } | null;
+}
+
+export interface BarcodeNutritionPreview {
+  barcode: string;
+  name: string;
+  brand?: string;
+  imageUrl?: string;
+  servingText?: string;
+  nutritionDataPer?: string;
+  productQuantity?: number;
+  productQuantityUnit?: string;
+  calories?: number;
+  water?: number;
+  nutrition?: NutritionInfo;
+  minerals?: MineralsInfo;
+  entryCalories?: number;
+  entryWater?: number;
+  entryNutrition?: NutritionInfo;
+  entryMinerals?: MineralsInfo;
+}
+
 /** Mifflin-St Jeor 公式估算基础代谢率 */
 export function calculateBMR(profile: UserProfile): number {
   const base = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age;

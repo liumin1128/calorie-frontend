@@ -1,14 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCalorieStore } from "@/stores/calorieStore";
 import { useDailySummaryStore } from "@/stores/dailySummaryStore";
+import { lookupBarcodeNutrition } from "@/services/barcodeNutritionService";
 import type {
+  BarcodeNutritionPreview,
   CalorieEntry,
   CalorieType,
   CreateCalorieEntryDto,
 } from "@/types/calorie";
+import { getDefaultMealType } from "@/types/calorie";
+
+function buildBarcodeEntryDto(
+  preview: BarcodeNutritionPreview,
+  selectedDate: string,
+): CreateCalorieEntryDto {
+  const description = [preview.brand, preview.servingText]
+    .filter(Boolean)
+    .join(" · ");
+
+  return {
+    type: "intake",
+    title: preview.name,
+    calories: preview.entryCalories ?? preview.calories ?? 0,
+    entryDate: new Date(
+      `${selectedDate}T${new Date().toTimeString().slice(0, 5)}`,
+    ).toISOString(),
+    mealType: getDefaultMealType(),
+    source: "barcode",
+    externalId: preview.barcode,
+    ...(preview.entryWater != null ? { water: preview.entryWater } : {}),
+    ...(description ? { description } : {}),
+    ...(preview.entryNutrition ? { nutrition: preview.entryNutrition } : {}),
+    ...(preview.entryMinerals ? { minerals: preview.entryMinerals } : {}),
+  };
+}
 
 export interface UseCalorieTrackerReturn {
   entries: CalorieEntry[];
@@ -25,6 +53,11 @@ export interface UseCalorieTrackerReturn {
   autoTriggerImage: boolean;
   aiPreviewOpen: boolean;
   qrScannerOpen: boolean;
+  barcodePreviewOpen: boolean;
+  barcodePreviewLoading: boolean;
+  barcodePreviewSubmitting: boolean;
+  barcodePreviewError: string | null;
+  barcodePreviewData: BarcodeNutritionPreview | null;
   loadEntries: () => Promise<void>;
   handleSubmitRecord: (data: CreateCalorieEntryDto) => Promise<void>;
   handleBatchSubmitRecords: (records: CreateCalorieEntryDto[]) => Promise<void>;
@@ -39,6 +72,13 @@ export interface UseCalorieTrackerReturn {
   ) => void;
   handleCloseAiPreview: () => void;
   handleCloseQrScanner: () => void;
+  handleDetectedBarcode: (result: {
+    text: string;
+    format: string;
+  }) => Promise<void>;
+  handleCloseBarcodePreview: () => void;
+  handleRetryBarcodeScan: () => void;
+  handleConfirmBarcodePreview: () => Promise<void>;
 }
 
 export function useCalorieTracker(): UseCalorieTrackerReturn {
@@ -64,6 +104,25 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   const [autoTriggerImage, setAutoTriggerImage] = useState(false);
   const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [barcodePreviewOpen, setBarcodePreviewOpen] = useState(false);
+  const [barcodePreviewLoading, setBarcodePreviewLoading] = useState(false);
+  const [barcodePreviewSubmitting, setBarcodePreviewSubmitting] =
+    useState(false);
+  const [barcodePreviewError, setBarcodePreviewError] = useState<string | null>(
+    null,
+  );
+  const [barcodePreviewData, setBarcodePreviewData] =
+    useState<BarcodeNutritionPreview | null>(null);
+  const barcodeLookupIdRef = useRef(0);
+
+  const resetBarcodePreviewState = (options?: { keepOpen?: boolean }) => {
+    barcodeLookupIdRef.current += 1;
+    setBarcodePreviewOpen(options?.keepOpen ?? false);
+    setBarcodePreviewLoading(false);
+    setBarcodePreviewSubmitting(false);
+    setBarcodePreviewError(null);
+    setBarcodePreviewData(null);
+  };
 
   const loadEntries = async () => {
     if (!token) return;
@@ -101,6 +160,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   };
 
   const handleOpenCreate = () => {
+    resetBarcodePreviewState();
     setEditingEntry(null);
     setLockedType(null);
     setAutoTriggerImage(false);
@@ -108,6 +168,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   };
 
   const handleOpenEdit = (entry: CalorieEntry) => {
+    resetBarcodePreviewState();
     setEditingEntry(entry);
     setLockedType(null);
     setAutoTriggerImage(false);
@@ -137,6 +198,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   ) => {
     setSelectorOpen(false);
     setEditingEntry(null);
+    resetBarcodePreviewState();
     switch (entryType) {
       case "ai-image":
         setAiPreviewOpen(true);
@@ -157,6 +219,72 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     }
   };
 
+  const handleDetectedBarcode = async ({ text }: { text: string }) => {
+    if (!token) return;
+
+    const requestId = barcodeLookupIdRef.current + 1;
+    barcodeLookupIdRef.current = requestId;
+    setQrScannerOpen(false);
+    setBarcodePreviewOpen(true);
+    setBarcodePreviewLoading(true);
+    setBarcodePreviewSubmitting(false);
+    setBarcodePreviewError(null);
+    setBarcodePreviewData(null);
+
+    try {
+      const preview = await lookupBarcodeNutrition(token, text);
+      if (barcodeLookupIdRef.current !== requestId) return;
+      setBarcodePreviewData(preview);
+    } catch (error) {
+      if (barcodeLookupIdRef.current !== requestId) return;
+      setBarcodePreviewError(
+        error instanceof Error ? error.message : "查询条码营养信息失败",
+      );
+    } finally {
+      if (barcodeLookupIdRef.current === requestId) {
+        setBarcodePreviewLoading(false);
+      }
+    }
+  };
+
+  const handleCloseBarcodePreview = () => {
+    resetBarcodePreviewState();
+  };
+
+  const handleRetryBarcodeScan = () => {
+    resetBarcodePreviewState();
+    setQrScannerOpen(true);
+  };
+
+  const handleConfirmBarcodePreview = async () => {
+    if (!barcodePreviewData || !token) return;
+
+    if (
+      barcodePreviewData.calories == null ||
+      barcodePreviewData.calories < 0
+    ) {
+      setBarcodePreviewError(
+        "该商品缺少可记录的热量信息，暂时无法直接添加到记录",
+      );
+      return;
+    }
+
+    setBarcodePreviewSubmitting(true);
+    setBarcodePreviewError(null);
+    try {
+      await handleSubmitRecord(
+        buildBarcodeEntryDto(barcodePreviewData, selectedDate),
+      );
+      resetBarcodePreviewState();
+    } catch (error) {
+      setBarcodePreviewError(
+        error instanceof Error ? error.message : "添加条码记录失败",
+      );
+    } finally {
+      setBarcodePreviewSubmitting(false);
+    }
+  };
+
   return {
     entries,
     loading,
@@ -171,6 +299,12 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     lockedType,
     autoTriggerImage,
     aiPreviewOpen,
+    qrScannerOpen,
+    barcodePreviewOpen,
+    barcodePreviewLoading,
+    barcodePreviewSubmitting,
+    barcodePreviewError,
+    barcodePreviewData,
     loadEntries,
     handleSubmitRecord,
     handleBatchSubmitRecords,
@@ -182,7 +316,10 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     handleCloseSelector,
     handleSelectEntryType,
     handleCloseAiPreview,
-    qrScannerOpen,
     handleCloseQrScanner: () => setQrScannerOpen(false),
+    handleDetectedBarcode,
+    handleCloseBarcodePreview,
+    handleRetryBarcodeScan,
+    handleConfirmBarcodePreview,
   };
 }

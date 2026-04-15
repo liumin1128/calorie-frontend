@@ -438,12 +438,13 @@ async function detectWithQuagga(
 interface Props {
   open: boolean;
   onClose: () => void;
+  onDetected?: (result: ScanResult) => void | Promise<void>;
 }
 
 /* ---------- 状态类型 ---------- */
 type ScanStatus = "idle" | "detecting" | "success" | "not-found" | "error";
 
-export default function BarcodeScanner({ open, onClose }: Props) {
+export default function BarcodeScanner({ open, onClose, onDetected }: Props) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const albumInputRef = useRef<HTMLInputElement>(null);
 
@@ -501,7 +502,11 @@ export default function BarcodeScanner({ open, onClose }: Props) {
             status: "success",
             detail: `识别成功: ${result.format} | ${result.text}`,
           });
-          alert(`扫描成功！\n格式: ${result.format}\n内容: ${result.text}`);
+          if (onDetected) {
+            await onDetected(result);
+          } else {
+            alert(`扫描成功！\n格式: ${result.format}\n内容: ${result.text}`);
+          }
         } else {
           setStatus("not-found");
           appendDebug({
@@ -522,7 +527,7 @@ export default function BarcodeScanner({ open, onClose }: Props) {
         });
       }
     },
-    [appendDebug],
+    [appendDebug, onDetected],
   );
 
   /* ---- 文件选择处理 ---- */
