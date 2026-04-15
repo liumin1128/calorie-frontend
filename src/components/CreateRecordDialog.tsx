@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -62,6 +62,16 @@ export default function CreateRecordDialog({
 
   const presets = type === "intake" ? foodPresets : exercisePresets;
 
+  const handleReset = useCallback(() => {
+    setType("intake");
+    setTitle("");
+    setCalories(0);
+    setDate(defaultDate ?? getToday());
+    setTime(getNowTime());
+    setError(null);
+    setImageKey((k) => k + 1);
+  }, [defaultDate]);
+
   useEffect(() => {
     if (open && initialData) {
       setType(initialData.type);
@@ -76,17 +86,7 @@ export default function CreateRecordDialog({
     } else if (open) {
       handleReset();
     }
-  }, [open, initialData]);
-
-  const handleReset = () => {
-    setType("intake");
-    setTitle("");
-    setCalories(0);
-    setDate(defaultDate ?? getToday());
-    setTime(getNowTime());
-    setError(null);
-    setImageKey((k) => k + 1);
-  };
+  }, [open, initialData, handleReset]);
 
   const handleSubmit = async () => {
     if (!title || calories <= 0) return;
