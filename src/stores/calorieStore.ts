@@ -7,6 +7,7 @@ import {
   deleteCalorieEntry,
 } from "@/services/calorieService";
 import type { CalorieEntry, CreateCalorieEntryDto } from "@/types/calorie";
+import { getLocalDayRange } from "@/utils/date";
 
 interface CalorieState {
   entriesCache: Record<string, CalorieEntry[]>;
@@ -43,9 +44,9 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      const endDate = dayjs(selectedDate).add(1, "day").format("YYYY-MM-DD");
+      const { startDate, endDate } = getLocalDayRange(selectedDate);
       const res = await getCalorieEntries(token, {
-        startDate: selectedDate,
+        startDate,
         endDate,
         pageSize: 100,
       });

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import dayjs from "dayjs";
 import { getDailySummary } from "@/services/calorieService";
 import type { DailySummaryMap } from "@/types/calorie";
+import { getLocalMonthRange } from "@/utils/date";
 
 const STORAGE_PREFIX = "daily_summary_";
 
@@ -63,12 +64,11 @@ export const useDailySummaryStore = create<DailySummaryState>((set, get) => ({
       }
     }
 
-    const start = dayjs(currentMonth).startOf("month").format("YYYY-MM-DD");
-    const end = dayjs(currentMonth).endOf("month").format("YYYY-MM-DD");
+    const { startDate, endDate } = getLocalMonthRange(currentMonth);
 
     set({ loading: true, error: null });
     try {
-      const data = await getDailySummary(token, start, end);
+      const data = await getDailySummary(token, startDate, endDate);
       saveToSession(currentMonth, data);
       set({ summaryMap: data });
     } catch (e) {
