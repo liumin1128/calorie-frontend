@@ -21,6 +21,7 @@ const DatePicker = dynamic(
   { ssr: false },
 );
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
 import { sumCalories } from "@/utils/calorie";
@@ -39,9 +40,18 @@ const CreateRecordDialog = dynamic(
 const ProfileDialog = dynamic(() => import("@/components/ProfileDialog"), {
   ssr: false,
 });
+const RecordTypeSelector = dynamic(
+  () => import("@/components/RecordTypeSelector"),
+  { ssr: false },
+);
+const AiAnalysisPreview = dynamic(
+  () => import("@/components/AiAnalysisPreview"),
+  { ssr: false },
+);
 
 export default function Home() {
   const { profile, loading: profileLoading } = useUserProfile();
+  const { token } = useAuth();
   const tracker = useCalorieTracker();
 
   const intake = sumCalories(tracker.entries, "intake");
@@ -154,6 +164,7 @@ export default function Home() {
                 onDelete={tracker.handleDeleteRecord}
                 onRetry={tracker.loadEntries}
                 onOpenCreate={tracker.handleOpenCreate}
+                onSelectEntryType={tracker.handleSelectEntryType}
               />
             </FadeUp>
           </Grid>
@@ -176,10 +187,16 @@ export default function Home() {
         color="primary"
         aria-label="新增记录"
         sx={{ position: "fixed", bottom: 24, right: 24 }}
-        onClick={tracker.handleOpenCreate}
+        onClick={tracker.handleOpenSelector}
       >
         <AddIcon />
       </Fab>
+
+      <RecordTypeSelector
+        open={tracker.selectorOpen}
+        onClose={tracker.handleCloseSelector}
+        onSelect={tracker.handleSelectEntryType}
+      />
 
       <CreateRecordDialog
         open={tracker.dialogOpen}
@@ -187,7 +204,19 @@ export default function Home() {
         onSubmit={tracker.handleSubmitRecord}
         initialData={tracker.editingEntry}
         defaultDate={tracker.selectedDate}
+        lockedType={tracker.lockedType}
+        autoTriggerImage={tracker.autoTriggerImage}
       />
+
+      {token && (
+        <AiAnalysisPreview
+          open={tracker.aiPreviewOpen}
+          token={token}
+          selectedDate={tracker.selectedDate}
+          onClose={tracker.handleCloseAiPreview}
+          onSave={tracker.handleBatchSubmitRecords}
+        />
+      )}
 
       <ProfileDialog
         open={tracker.profileOpen}

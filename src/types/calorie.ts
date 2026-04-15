@@ -22,6 +22,15 @@ export interface WeightRecord {
 
 export type CalorieType = "intake" | "burn";
 
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+
+export interface NutritionInfo {
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+}
+
 export interface CalorieEntry {
   _id: string;
   userId: string;
@@ -30,6 +39,8 @@ export interface CalorieEntry {
   title: string;
   description?: string;
   images?: string[];
+  mealType?: MealType;
+  nutrition?: NutritionInfo;
   entryDate: string;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +52,8 @@ export interface CreateCalorieEntryDto {
   title: string;
   description?: string;
   entryDate: string;
+  mealType?: MealType;
+  nutrition?: NutritionInfo;
 }
 
 export type UpdateCalorieEntryDto = Partial<CreateCalorieEntryDto>;
@@ -129,3 +142,19 @@ export function calculateBMR(profile: UserProfile): number {
   const base = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age;
   return Math.round(profile.gender === "male" ? base + 5 : base - 161);
 }
+
+/** 根据当前时间推断默认餐次 */
+export function getDefaultMealType(): MealType {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 10) return "breakfast";
+  if (hour >= 10 && hour < 14) return "lunch";
+  if (hour >= 14 && hour < 17) return "snack";
+  return "dinner";
+}
+
+export const mealTypeLabels: Record<MealType, string> = {
+  breakfast: "早餐",
+  lunch: "午餐",
+  dinner: "晚餐",
+  snack: "零食",
+};

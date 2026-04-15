@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -24,6 +24,7 @@ import type {
 import { foodPresets, exercisePresets } from "@/types/calorie";
 import { useAuth } from "@/contexts/AuthContext";
 import ImageUploadAnalyzer from "@/components/ImageUploadAnalyzer";
+import type { ImageUploadAnalyzerRef } from "@/components/ImageUploadAnalyzer";
 
 interface Props {
   open: boolean;
@@ -31,6 +32,8 @@ interface Props {
   onSubmit: (data: CreateCalorieEntryDto) => void | Promise<void>;
   initialData?: CalorieEntry | null;
   defaultDate?: string;
+  lockedType?: CalorieType | null;
+  autoTriggerImage?: boolean;
 }
 
 function getToday() {
@@ -48,6 +51,8 @@ export default function CreateRecordDialog({
   onSubmit,
   initialData,
   defaultDate,
+  lockedType,
+  autoTriggerImage,
 }: Props) {
   const isEdit = !!initialData;
   const { token } = useAuth();
@@ -58,19 +63,21 @@ export default function CreateRecordDialog({
   const [time, setTime] = useState(getNowTime);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageKey, setImageKey] = useState(0); // 用于重置 ImageUploadAnalyzer
+  const [imageKey, setImageKey] = useState(0);
+  const imageAnalyzerRef = useRef<ImageUploadAnalyzerRef>(null);
 
-  const presets = type === "intake" ? foodPresets : exercisePresets;
+  const effectiveType = lockedType ?? type;
+  const presets = effectiveType === "intake" ? foodPresets : exercisePresets;
 
   const handleReset = useCallback(() => {
-    setType("intake");
+    setType(lockedType ?? "intake");
     setTitle("");
     setCalories(0);
     setDate(defaultDate ?? getToday());
     setTime(getNowTime());
     setError(null);
     setImageKey((k) => k + 1);
-  }, [defaultDate]);
+  }, [defaultDate, lockedType]);
 
   useEffect(() => {
     if (open && initialData) {
@@ -88,13 +95,23 @@ export default function CreateRecordDialog({
     }
   }, [open, initialData, handleReset]);
 
+  // autoTriggerImage: 弹窗打开后自动触发图片文件选择
+  useEffect(() => {
+    if (open && autoTriggerImage && !initialData) {
+      const timer = setTimeout(() => {
+        imageAnalyzerRef.current?.triggerFileSelect();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open, autoTriggerImage, initialData]);
+
   const handleSubmit = async () => {
     if (!title || calories <= 0) return;
     setSubmitting(true);
     setError(null);
     try {
       await onSubmit({
-        type,
+        type: effectiveType,
         title,
         calories,
         entryDate: new Date(`${date}T${time}`).toISOString(),
@@ -116,33 +133,44 @@ export default function CreateRecordDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{isEdit ? "编辑记录" : "新增记录"}</DialogTitle>
+      <DialogTitle>
+        {isEdit
+          ? "编辑记录"
+          : lockedType
+            ? lockedType === "intake"
+              ? "新增饮食记录"
+              : "新增运动记录"
+            : "新增记录"}
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: 1 }}>
-          <ToggleButtonGroup
-            value={type}
-            exclusive
-            onChange={(_, v) => {
-              if (v) {
-                setType(v);
-                setTitle("");
-                setCalories(0);
-                setImageKey((k) => k + 1);
-              }
-            }}
-            fullWidth
-          >
-            <ToggleButton value="intake">
-              <RestaurantIcon sx={{ mr: 1 }} /> 饮食
-            </ToggleButton>
-            <ToggleButton value="burn">
-              <FitnessCenterIcon sx={{ mr: 1 }} /> 运动
-            </ToggleButton>
-          </ToggleButtonGroup>
+          {!lockedType && (
+            <ToggleButtonGroup
+              value={effectiveType}
+              exclusive
+              onChange={(_, v) => {
+                if (v) {
+                  setType(v);
+                  setTitle("");
+                  setCalories(0);
+                  setImageKey((k) => k + 1);
+                }
+              }}
+              fullWidth
+            >
+              <ToggleButton value="intake">
+                <RestaurantIcon sx={{ mr: 1 }} /> 饮食
+              </ToggleButton>
+              <ToggleButton value="burn">
+                <FitnessCenterIcon sx={{ mr: 1 }} /> 运动
+              </ToggleButton>
+            </ToggleButtonGroup>
+          )}
 
-          {type === "intake" && token && (
+          {effectiveType === "intake" && token && (
             <ImageUploadAnalyzer
               key={imageKey}
+              ref={imageAnalyzerRef}
               token={token}
               onAnalyzed={({ title: t, calories: c }) => {
                 setTitle(t);
@@ -168,9 +196,11 @@ export default function CreateRecordDialog({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label={type === "intake" ? "食物描述" : "运动描述"}
+                label={effectiveType === "intake" ? "食物描述" : "运动描述"}
                 placeholder={
-                  type === "intake" ? "输入或选择食物" : "输入或选择运动"
+                  effectiveType === "intake"
+                    ? "输入或选择食物"
+                    : "输入或选择运动"
                 }
               />
             )}
@@ -194,7 +224,9 @@ export default function CreateRecordDialog({
 
           <TextField
             label={
-              type === "intake" ? "摄入卡路里 (kcal)" : "消耗卡路里 (kcal)"
+              effectiveType === "intake"
+                ? "摄入卡路里 (kcal)"
+                : "消耗卡路里 (kcal)"
             }
             type="number"
             value={calories || ""}
@@ -208,7 +240,7 @@ export default function CreateRecordDialog({
               color="text.secondary"
               textAlign="center"
             >
-              {type === "intake"
+              {effectiveType === "intake"
                 ? `🍽️ 将摄入 ${Math.round(calories)} kcal`
                 : `🏃 将消耗 ${Math.round(calories)} kcal`}
             </Typography>

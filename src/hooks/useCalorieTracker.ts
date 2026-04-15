@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCalorieStore } from "@/stores/calorieStore";
 import { useDailySummaryStore } from "@/stores/dailySummaryStore";
-import type { CalorieEntry, CreateCalorieEntryDto } from "@/types/calorie";
+import type {
+  CalorieEntry,
+  CalorieType,
+  CreateCalorieEntryDto,
+} from "@/types/calorie";
 
 export interface UseCalorieTrackerReturn {
   entries: CalorieEntry[];
@@ -16,12 +20,23 @@ export interface UseCalorieTrackerReturn {
   editingEntry: CalorieEntry | null;
   profileOpen: boolean;
   setProfileOpen: (open: boolean) => void;
+  selectorOpen: boolean;
+  lockedType: CalorieType | null;
+  autoTriggerImage: boolean;
+  aiPreviewOpen: boolean;
   loadEntries: () => Promise<void>;
   handleSubmitRecord: (data: CreateCalorieEntryDto) => Promise<void>;
+  handleBatchSubmitRecords: (records: CreateCalorieEntryDto[]) => Promise<void>;
   handleDeleteRecord: (id: string) => Promise<void>;
   handleOpenCreate: () => void;
   handleOpenEdit: (entry: CalorieEntry) => void;
   handleCloseDialog: () => void;
+  handleOpenSelector: () => void;
+  handleCloseSelector: () => void;
+  handleSelectEntryType: (
+    type: "ai-image" | "qr-code" | "manual-diet" | "exercise",
+  ) => void;
+  handleCloseAiPreview: () => void;
 }
 
 export function useCalorieTracker(): UseCalorieTrackerReturn {
@@ -42,6 +57,10 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CalorieEntry | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [lockedType, setLockedType] = useState<CalorieType | null>(null);
+  const [autoTriggerImage, setAutoTriggerImage] = useState(false);
+  const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
 
   const loadEntries = async () => {
     if (!token) return;
@@ -66,6 +85,14 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     refreshCalendar(token, { force: true }).catch(() => {});
   };
 
+  const handleBatchSubmitRecords = async (records: CreateCalorieEntryDto[]) => {
+    if (!token) return;
+    for (const record of records) {
+      await addEntry(token, record);
+    }
+    refreshCalendar(token, { force: true }).catch(() => {});
+  };
+
   const handleDeleteRecord = async (id: string) => {
     if (!token) return;
     await removeEntry(token, id);
@@ -74,15 +101,58 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
 
   const handleOpenCreate = () => {
     setEditingEntry(null);
+    setLockedType(null);
+    setAutoTriggerImage(false);
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (entry: CalorieEntry) => {
     setEditingEntry(entry);
+    setLockedType(null);
+    setAutoTriggerImage(false);
     setDialogOpen(true);
   };
 
-  const handleCloseDialog = () => setDialogOpen(false);
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setLockedType(null);
+    setAutoTriggerImage(false);
+  };
+
+  const handleOpenSelector = () => {
+    setSelectorOpen(true);
+  };
+
+  const handleCloseSelector = () => {
+    setSelectorOpen(false);
+  };
+
+  const handleCloseAiPreview = () => {
+    setAiPreviewOpen(false);
+  };
+
+  const handleSelectEntryType = (
+    entryType: "ai-image" | "qr-code" | "manual-diet" | "exercise",
+  ) => {
+    setSelectorOpen(false);
+    setEditingEntry(null);
+    switch (entryType) {
+      case "ai-image":
+        setAiPreviewOpen(true);
+        break;
+      case "manual-diet":
+        setLockedType("intake");
+        setAutoTriggerImage(false);
+        setDialogOpen(true);
+        break;
+      case "exercise":
+        setLockedType("burn");
+        setAutoTriggerImage(false);
+        setDialogOpen(true);
+        break;
+      // "qr-code" 不做处理，面板已 disabled
+    }
+  };
 
   return {
     entries,
@@ -94,11 +164,20 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     editingEntry,
     profileOpen,
     setProfileOpen,
+    selectorOpen,
+    lockedType,
+    autoTriggerImage,
+    aiPreviewOpen,
     loadEntries,
     handleSubmitRecord,
+    handleBatchSubmitRecords,
     handleDeleteRecord,
     handleOpenCreate,
     handleOpenEdit,
     handleCloseDialog,
+    handleOpenSelector,
+    handleCloseSelector,
+    handleSelectEntryType,
+    handleCloseAiPreview,
   };
 }
