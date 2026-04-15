@@ -56,7 +56,50 @@ async function detectWithNative(file: File): Promise<ScanResult | null> {
   return null;
 }
 
+/**
+ * iOS 拍摄的图片带有 EXIF 旋转信息，html5-qrcode 不处理 EXIF 导致识别失败。
+ * 通过 Canvas 将图片重绘一遍——浏览器渲染 <img> 时会自动应用 EXIF 旋转，
+ * 从而得到方向正确的像素数据，再传给解码器。
+ */
+async function normalizeOrientation(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          resolve(new File([blob], file.name, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        0.95,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("图片加载失败"));
+    };
+    img.src = url;
+  });
+}
+
 async function detectWithFallback(file: File): Promise<ScanResult | null> {
+  // 修正 EXIF 旋转信息（iOS 必须）
+  const correctedFile = await normalizeOrientation(file);
+
   // 动态加载 html5-qrcode，实现分包按需加载
   const { Html5Qrcode } = await import("html5-qrcode");
 
@@ -69,7 +112,7 @@ async function detectWithFallback(file: File): Promise<ScanResult | null> {
 
   try {
     const scanner = new Html5Qrcode(tempId);
-    const decodedText = await scanner.scanFile(file, false);
+    const decodedText = await scanner.scanFile(correctedFile, false);
     return { text: decodedText, format: "qr_code" };
   } catch {
     return null;
