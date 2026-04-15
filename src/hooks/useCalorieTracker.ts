@@ -87,9 +87,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
 
   const handleBatchSubmitRecords = async (records: CreateCalorieEntryDto[]) => {
     if (!token) return;
-    for (const record of records) {
-      await addEntry(token, record);
-    }
+    await Promise.all(records.map((record) => addEntry(token, record)));
     refreshCalendar(token, { force: true }).catch(() => {});
   };
 
