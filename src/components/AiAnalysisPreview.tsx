@@ -41,9 +41,10 @@ interface FoodDraft {
   name: string;
   calories: number;
   protein: number;
-  carbs: number;
+  carbohydrates: number;
   fat: number;
   fiber: number;
+  water: number;
   unit: string;
   quantity: number;
   mealType: MealType;
@@ -77,13 +78,14 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
     type: "intake",
     title: f.name,
     calories: f.calories,
+    water: f.water,
     entryDate: new Date(
       `${date}T${new Date().toTimeString().slice(0, 5)}`,
     ).toISOString(),
     mealType: f.mealType,
     nutrition: {
       protein: f.protein,
-      carbs: f.carbs,
+      carbohydrates: f.carbohydrates,
       fat: f.fat,
       fiber: f.fiber,
     },
@@ -95,9 +97,10 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
 function NutrientSummary({ food }: { food: FoodDraft }) {
   const parts = [
     food.protein > 0 && `蛋白质${Math.round(food.protein)}g`,
-    food.carbs > 0 && `碳水${Math.round(food.carbs)}g`,
+    food.carbohydrates > 0 && `碳水${Math.round(food.carbohydrates)}g`,
     food.fat > 0 && `脂肪${Math.round(food.fat)}g`,
     food.fiber > 0 && `纤维${Math.round(food.fiber)}g`,
+    food.water > 0 && `水分${Math.round(food.water)}ml`,
   ].filter(Boolean);
   if (parts.length === 0) return null;
   return (
@@ -386,9 +389,9 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.carbs || ""}
+              value={food.carbohydrates || ""}
               onChange={(e) =>
-                onUpdate(food.id, { carbs: Number(e.target.value) })
+                onUpdate(food.id, { carbohydrates: Number(e.target.value) })
               }
               sx={{ flex: 1 }}
             />
@@ -492,10 +495,11 @@ export default function AiAnalysisPreview({
               id: nextId(),
               name: f.name,
               calories: f.calories,
-              protein: f.protein,
-              carbs: f.carbs,
-              fat: f.fat,
-              fiber: f.fiber,
+              protein: f.nutrition?.protein ?? 0,
+              carbohydrates: f.nutrition?.carbohydrates ?? 0,
+              fat: f.nutrition?.fat ?? 0,
+              fiber: f.nutrition?.fiber ?? 0,
+              water: f.water ?? 0,
               unit: f.unit,
               quantity: f.quantity,
               mealType: defaultMeal,
