@@ -7,7 +7,8 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import TextField from "@mui/material/TextField";
 import Stack from "@mui/material/Stack";
-import Chip from "@mui/material/Chip";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Collapse from "@mui/material/Collapse";
 import LinearProgress from "@mui/material/LinearProgress";
 import Dialog from "@mui/material/Dialog";
@@ -16,8 +17,8 @@ import Fade from "@mui/material/Fade";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import type { TransitionProps } from "@mui/material/transitions";
@@ -89,61 +90,24 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
   };
 }
 
-/* ───── 营养条 ───── */
+/* ───── 营养摘要文本 ───── */
 
-const nutrientColors = {
-  protein: "#3d6b4f",
-  carbs: "#f49420",
-  fat: "#e87461",
-  fiber: "#6b9b7a",
-};
-
-function NutrientBar({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
+function NutrientSummary({ food }: { food: FoodDraft }) {
+  const parts = [
+    food.protein > 0 && `蛋白质${Math.round(food.protein)}g`,
+    food.carbs > 0 && `碳水${Math.round(food.carbs)}g`,
+    food.fat > 0 && `脂肪${Math.round(food.fat)}g`,
+    food.fiber > 0 && `纤维${Math.round(food.fiber)}g`,
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
   return (
-    <Stack spacing={0.25} sx={{ flex: 1, minWidth: 0 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="baseline"
-      >
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontSize: 11 }}
-        >
-          {label}
-        </Typography>
-        <Typography variant="caption" fontWeight={600} sx={{ fontSize: 11 }}>
-          {Math.round(value)}g
-        </Typography>
-      </Stack>
-      <Box
-        sx={{
-          height: 3,
-          borderRadius: 2,
-          bgcolor: "rgba(0,0,0,0.04)",
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          sx={{
-            height: "100%",
-            width: `${Math.min((value / 50) * 100, 100)}%`,
-            borderRadius: 2,
-            bgcolor: color,
-            transition: "width 0.4s ease",
-          }}
-        />
-      </Box>
-    </Stack>
+    <Typography
+      variant="caption"
+      color="text.secondary"
+      sx={{ fontSize: 11, lineHeight: 1.4 }}
+    >
+      {parts.join(" · ")}
+    </Typography>
   );
 }
 
@@ -159,24 +123,21 @@ function QuantityStepper({
   onChange: (val: number) => void;
 }) {
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: "999px",
-        height: 28,
-        px: 0.25,
-      }}
-    >
+    <Stack direction="row" alignItems="center" spacing={0.25}>
       <IconButton
         size="small"
         disabled={quantity <= 0.5}
         onClick={() => onChange(+(quantity - 0.5).toFixed(1))}
-        sx={{ p: 0.25, color: "text.secondary" }}
+        sx={{
+          width: 28,
+          height: 28,
+          borderRadius: 0.5,
+          color: "rgba(0,0,0,0.25)",
+          bgcolor: "rgba(0,0,0,0.04)",
+          "&:hover": { bgcolor: "rgba(0,0,0,0.08)" },
+        }}
       >
-        <RemoveIcon sx={{ fontSize: 14 }} />
+        <RemoveIcon sx={{ fontSize: 16 }} />
       </IconButton>
       <Typography
         variant="caption"
@@ -188,20 +149,28 @@ function QuantityStepper({
           fontSize: 12,
         }}
       >
-        {quantity} {unit}
+        {quantity}
+        {unit}
       </Typography>
       <IconButton
         size="small"
         onClick={() => onChange(+(quantity + 0.5).toFixed(1))}
-        sx={{ p: 0.25, color: "text.secondary" }}
+        sx={{
+          width: 28,
+          height: 28,
+          borderRadius: 0.5,
+          color: "rgba(0,0,0,0.25)",
+          bgcolor: "rgba(0,0,0,0.04)",
+          "&:hover": { bgcolor: "rgba(0,0,0,0.08)" },
+        }}
       >
-        <AddIcon sx={{ fontSize: 14 }} />
+        <AddIcon sx={{ fontSize: 16 }} />
       </IconButton>
     </Stack>
   );
 }
 
-/* ───── 单条食物卡片 ───── */
+/* ───── 单条食物条目 ───── */
 
 function FoodPreviewCard({
   food,
@@ -218,123 +187,95 @@ function FoodPreviewCard({
     <Box
       sx={{
         bgcolor: "background.paper",
-        borderRadius: 3,
+        borderRadius: 0.5,
         border: "1px solid",
         borderColor: food.editing ? "primary.light" : "divider",
         overflow: "hidden",
         transition: "border-color 0.2s",
       }}
     >
-      {/* 主行 */}
-      <Box sx={{ px: 2, pt: 1.75, pb: food.editing ? 0 : 1.75 }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          {/* 卡路里圆点 */}
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              bgcolor: "rgba(61,107,79,0.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
+      <Box sx={{ px: 2, py: 1.75 }}>
+        {/* 第一行：名称 + 操作（份数 + 编辑 + 删除） */}
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            noWrap
+            sx={{ flexShrink: 1, minWidth: 0 }}
           >
-            <Typography
-              variant="body2"
-              fontWeight={700}
-              color="primary.main"
-              sx={{ fontSize: 13 }}
-            >
-              {Math.round(food.calories)}
-            </Typography>
-          </Box>
-
-          {/* 名称 */}
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={600} noWrap>
-              {food.name}
-            </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontSize: 11 }}
-            >
-              {Math.round(food.calories)} kcal
-            </Typography>
-          </Box>
-
-          {/* 份数步进 */}
+            {food.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: 11, flexShrink: 0 }}
+          >
+            {mealTypeLabels[food.mealType]}
+          </Typography>
+          <Box sx={{ flex: 1 }} />
           <QuantityStepper
             quantity={food.quantity}
             unit={food.unit}
             onChange={(val) => onUpdate(food.id, { quantity: val })}
           />
-
-          {/* 展开/收起 */}
           <IconButton
             size="small"
             onClick={() => onToggleEdit(food.id)}
-            sx={{ color: "text.secondary", p: 0.5 }}
+            sx={{
+              width: 28,
+              height: 28,
+              borderRadius: 0.5,
+              color: food.editing ? "primary.main" : "text.secondary",
+              bgcolor: food.editing
+                ? "rgba(61,107,79,0.08)"
+                : "rgba(0,0,0,0.04)",
+              "&:hover": {
+                bgcolor: food.editing
+                  ? "rgba(61,107,79,0.14)"
+                  : "rgba(0,0,0,0.08)",
+              },
+            }}
           >
-            {food.editing ? (
-              <KeyboardArrowUpIcon sx={{ fontSize: 18 }} />
-            ) : (
-              <KeyboardArrowDownIcon sx={{ fontSize: 18 }} />
-            )}
+            <EditOutlinedIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => onDelete(food.id)}
+            sx={{
+              width: 28,
+              height: 28,
+              borderRadius: 0.5,
+              color: "text.secondary",
+              bgcolor: "rgba(0,0,0,0.04)",
+              "&:hover": {
+                bgcolor: "rgba(244,68,54,0.08)",
+                color: "error.main",
+              },
+            }}
+          >
+            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Stack>
 
-        {/* 快捷区：餐次 + 营养 */}
-        {!food.editing && (
-          <Box sx={{ mt: 1.5 }}>
-            {/* 餐次 */}
-            <Stack direction="row" spacing={0.5} sx={{ mb: 1.5 }}>
-              {mealTypes.map((mt) => (
-                <Chip
-                  key={mt}
-                  label={mealTypeLabels[mt]}
-                  size="small"
-                  variant={food.mealType === mt ? "filled" : "outlined"}
-                  color={food.mealType === mt ? "primary" : "default"}
-                  onClick={() => onUpdate(food.id, { mealType: mt })}
-                  sx={{
-                    borderRadius: "999px",
-                    fontSize: 11,
-                    height: 24,
-                    cursor: "pointer",
-                    fontWeight: food.mealType === mt ? 600 : 400,
-                  }}
-                />
-              ))}
-            </Stack>
-
-            {/* 营养条 */}
-            <Stack direction="row" spacing={1.5}>
-              <NutrientBar
-                label="蛋白质"
-                value={food.protein}
-                color={nutrientColors.protein}
-              />
-              <NutrientBar
-                label="碳水"
-                value={food.carbs}
-                color={nutrientColors.carbs}
-              />
-              <NutrientBar
-                label="脂肪"
-                value={food.fat}
-                color={nutrientColors.fat}
-              />
-              <NutrientBar
-                label="纤维"
-                value={food.fiber}
-                color={nutrientColors.fiber}
-              />
-            </Stack>
-          </Box>
-        )}
+        {/* 第二行：突出卡路里 + 营养摘要 */}
+        <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 1 }}>
+          <Typography
+            variant="body1"
+            fontWeight={700}
+            color="primary.main"
+            sx={{ fontSize: 18, lineHeight: 1.3 }}
+          >
+            {Math.round(food.calories)}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: 12 }}
+          >
+            kcal
+          </Typography>
+          <NutrientSummary food={food} />
+        </Stack>
       </Box>
 
       {/* 展开编辑 */}
@@ -342,50 +283,60 @@ function FoodPreviewCard({
         <Box
           sx={{
             px: 2,
-            pt: 1.5,
-            pb: 2,
-            mt: 1,
-            borderTop: "1px dashed",
-            borderColor: "divider",
+            pt: 1.25,
+            pb: 1.5,
+            bgcolor: "rgba(61,107,79,0.02)",
             display: "flex",
             flexDirection: "column",
-            gap: 1.75,
+            gap: 1.5,
           }}
         >
-          <TextField
-            label="名称"
-            variant="standard"
+          {/* 餐次选择 */}
+          <ToggleButtonGroup
+            value={food.mealType}
+            exclusive
             size="small"
-            value={food.name}
-            onChange={(e) => onUpdate(food.id, { name: e.target.value })}
-            fullWidth
-          />
-
-          {/* 餐次 */}
-          <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ mb: 0.75, display: "block" }}
-            >
-              餐次
-            </Typography>
-            <Stack direction="row" spacing={0.75}>
-              {mealTypes.map((mt) => (
-                <Chip
-                  key={mt}
-                  label={mealTypeLabels[mt]}
-                  size="small"
-                  variant={food.mealType === mt ? "filled" : "outlined"}
-                  color={food.mealType === mt ? "primary" : "default"}
-                  onClick={() => onUpdate(food.id, { mealType: mt })}
-                  sx={{ borderRadius: "999px", cursor: "pointer" }}
-                />
-              ))}
-            </Stack>
-          </Box>
+            onChange={(_, val) => {
+              if (val) onUpdate(food.id, { mealType: val });
+            }}
+            sx={{
+              height: 30,
+              "& .MuiToggleButton-root": {
+                px: 1.5,
+                py: 0,
+                fontSize: 12,
+                fontWeight: 500,
+                lineHeight: 1,
+                textTransform: "none",
+                border: "1px solid",
+                borderColor: "divider",
+                color: "text.secondary",
+                "&.Mui-selected": {
+                  bgcolor: "primary.main",
+                  color: "#fff",
+                  fontWeight: 600,
+                  borderColor: "primary.main",
+                  "&:hover": { bgcolor: "primary.dark" },
+                },
+              },
+            }}
+          >
+            {mealTypes.map((mt) => (
+              <ToggleButton key={mt} value={mt}>
+                {mealTypeLabels[mt]}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
 
           <Stack direction="row" spacing={1.5}>
+            <TextField
+              label="名称"
+              variant="standard"
+              size="small"
+              value={food.name}
+              onChange={(e) => onUpdate(food.id, { name: e.target.value })}
+              sx={{ flex: 1 }}
+            />
             <TextField
               label="卡路里"
               variant="standard"
@@ -395,7 +346,7 @@ function FoodPreviewCard({
               onChange={(e) =>
                 onUpdate(food.id, { calories: Number(e.target.value) })
               }
-              sx={{ flex: 1 }}
+              sx={{ width: 80 }}
             />
             <TextField
               label="数量"
@@ -406,7 +357,7 @@ function FoodPreviewCard({
               onChange={(e) =>
                 onUpdate(food.id, { quantity: Number(e.target.value) })
               }
-              sx={{ width: 72 }}
+              sx={{ width: 60 }}
             />
             <TextField
               label="单位"
@@ -414,7 +365,7 @@ function FoodPreviewCard({
               size="small"
               value={food.unit}
               onChange={(e) => onUpdate(food.id, { unit: e.target.value })}
-              sx={{ width: 72 }}
+              sx={{ width: 60 }}
             />
           </Stack>
 
@@ -464,20 +415,6 @@ function FoodPreviewCard({
               sx={{ flex: 1 }}
             />
           </Stack>
-
-          {/* 删除 */}
-          <Button
-            size="small"
-            color="error"
-            onClick={() => onDelete(food.id)}
-            sx={{
-              alignSelf: "flex-start",
-              textTransform: "none",
-              fontSize: 12,
-            }}
-          >
-            删除此项
-          </Button>
         </Box>
       </Collapse>
     </Box>
@@ -617,7 +554,7 @@ export default function AiAnalysisPreview({
       TransitionComponent={SlideUp}
       TransitionProps={{ onEntered: handleEntered }}
       PaperProps={{
-        sx: { borderRadius: 4, overflow: "hidden", maxHeight: "88vh" },
+        sx: { borderRadius: 1, overflow: "hidden", maxHeight: "88vh" },
       }}
     >
       <input
@@ -767,7 +704,7 @@ export default function AiAnalysisPreview({
               textAlign: "center",
               py: 5,
               cursor: "pointer",
-              borderRadius: 3,
+              borderRadius: 0.5,
               border: "2px dashed",
               borderColor: "divider",
               transition: "border-color 0.2s, background 0.2s",
@@ -809,7 +746,7 @@ export default function AiAnalysisPreview({
         {stage === "preview" && (
           <Fade in>
             <Box>
-              <Stack spacing={1.5}>
+              <Stack spacing={1}>
                 {foods.map((food, i) => (
                   <Box
                     key={food.id}
@@ -855,7 +792,7 @@ export default function AiAnalysisPreview({
                   disabled={foods.length === 0 || saving}
                   onClick={handleSaveAll}
                   sx={{
-                    borderRadius: "999px",
+                    borderRadius: 0.5,
                     px: 3,
                     textTransform: "none",
                     fontWeight: 600,
