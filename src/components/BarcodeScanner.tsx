@@ -33,12 +33,16 @@ interface ScanResult {
 }
 
 /* ---------- 检测策略：原生优先，html5-qrcode 兜底 ---------- */
-const hasNativeDetector =
-  typeof globalThis !== "undefined" && "BarcodeDetector" in globalThis;
+
+function checkNativeDetector(): boolean {
+  return typeof globalThis !== "undefined" && "BarcodeDetector" in globalThis;
+}
 
 async function detectBarcode(file: File): Promise<ScanResult | null> {
-  if (hasNativeDetector) {
-    return detectWithNative(file);
+  // 级联策略：先尝试原生 API，不可用或失败时 fallback 到 html5-qrcode
+  if (checkNativeDetector()) {
+    const result = await detectWithNative(file);
+    if (result) return result;
   }
   return detectWithFallback(file);
 }
@@ -56,11 +60,6 @@ async function detectWithNative(file: File): Promise<ScanResult | null> {
   return null;
 }
 
-/**
- * iOS 拍摄的图片带有 EXIF 旋转信息，html5-qrcode 不处理 EXIF 导致识别失败。
- * 通过 Canvas 将图片重绘一遍——浏览器渲染 <img> 时会自动应用 EXIF 旋转，
- * 从而得到方向正确的像素数据，再传给解码器。
- */
 /**
  * iOS 拍摄的图片存在两个问题：
  * 1. 带有 EXIF 旋转信息，html5-qrcode 不处理 EXIF 导致识别失败
@@ -122,11 +121,22 @@ async function detectWithFallback(file: File): Promise<ScanResult | null> {
   // 动态加载 html5-qrcode，实现分包按需加载
   const { Html5Qrcode } = await import("html5-qrcode");
 
-  // html5-qrcode 需要一个 DOM 容器，创建临时隐藏元素
+  // html5-qrcode 内部通过 element.clientWidth 计算 canvas 尺寸，
+  // 如果容器是 display:none 则 clientWidth=0，图片会被降采样到 300px，
+  // 导致二维码像素被严重压缩，ZXing 无法识别。
+  // 必须使用 visibility:hidden + 足够大尺寸 + 离屏定位。
   const tempId = `__qr_scanner_${Date.now()}`;
   const container = document.createElement("div");
   container.id = tempId;
-  container.style.display = "none";
+  Object.assign(container.style, {
+    position: "fixed",
+    left: "-9999px",
+    top: "-9999px",
+    width: "1920px",
+    height: "1920px",
+    visibility: "hidden",
+    overflow: "hidden",
+  });
   document.body.appendChild(container);
 
   try {
@@ -353,9 +363,7 @@ export default function BarcodeScanner({ open, onClose }: Props) {
             variant="caption"
             sx={{ color: "text.secondary", textAlign: "center" }}
           >
-            {hasNativeDetector
-              ? "使用浏览器原生 Barcode Detection API"
-              : "使用 html5-qrcode 解码引擎"}
+            支持二维码和常见条形码格式
           </Typography>
         </Box>
       </DialogContent>
