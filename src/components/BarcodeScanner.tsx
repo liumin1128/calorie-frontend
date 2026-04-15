@@ -40,7 +40,7 @@ interface DebugEntry {
 
 type TraceFn = (entry: DebugEntry) => void;
 
-/* ---------- 检测策略：原生优先，html5-qrcode 兜底 ---------- */
+/* ---------- 检测策略：原生优先，Quagga2 兜底 ---------- */
 
 function checkNativeDetector(): boolean {
   return typeof globalThis !== "undefined" && "BarcodeDetector" in globalThis;
@@ -68,16 +68,16 @@ async function detectBarcode(
     trace({
       step: "引擎切换",
       status: "warning",
-      detail: "原生引擎未识别到结果，继续尝试 html5-qrcode",
+      detail: "原生引擎未识别到结果，继续尝试 Quagga2",
     });
   } else {
     trace({
       step: "引擎选择",
       status: "warning",
-      detail: "当前浏览器不支持 BarcodeDetector，直接使用 html5-qrcode",
+      detail: "当前浏览器不支持 BarcodeDetector，直接使用 Quagga2",
     });
   }
-  return detectWithFallback(file, trace);
+  return detectWithQuagga(file, trace);
 }
 
 async function detectWithNative(
@@ -132,16 +132,6 @@ async function detectWithNative(
  * 应用 EXIF 旋转，Canvas 导出的数据方向正确且尺寸合理。
  */
 const MAX_DIM = 1920;
-
-interface ImageVariant {
-  label: string;
-  file: File;
-}
-
-interface PixelVariant {
-  label: string;
-  imageData: ImageData;
-}
 
 interface BarcodeFileVariant {
   label: string;
@@ -271,118 +261,6 @@ async function normalizeOrientation(file: File, trace: TraceFn): Promise<File> {
   });
 }
 
-async function createPaddedVariant(
-  file: File,
-  paddingRatio: number,
-): Promise<File> {
-  const img = await loadImage(file);
-  const paddingX = Math.round(img.naturalWidth * paddingRatio);
-  const paddingY = Math.round(img.naturalHeight * paddingRatio);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth + paddingX * 2;
-  canvas.height = img.naturalHeight + paddingY * 2;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("无法创建白边变换");
-  }
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, paddingX, paddingY, img.naturalWidth, img.naturalHeight);
-  return canvasToFile(canvas, file.name);
-}
-
-async function createEnhancedVariant(file: File): Promise<File> {
-  const img = await loadImage(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("无法创建增强变换");
-  }
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.filter = "grayscale(1) contrast(1.5) brightness(1.05)";
-  ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
-  ctx.filter = "none";
-  return canvasToFile(canvas, file.name);
-}
-
-async function createRotatedVariant(
-  file: File,
-  degrees: 90 | 180 | 270,
-): Promise<File> {
-  const img = await loadImage(file);
-  const canvas = document.createElement("canvas");
-  const swap = degrees === 90 || degrees === 270;
-  canvas.width = swap ? img.naturalHeight : img.naturalWidth;
-  canvas.height = swap ? img.naturalWidth : img.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("无法创建旋转变换");
-  }
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate((degrees * Math.PI) / 180);
-  ctx.drawImage(
-    img,
-    -img.naturalWidth / 2,
-    -img.naturalHeight / 2,
-    img.naturalWidth,
-    img.naturalHeight,
-  );
-  return canvasToFile(canvas, file.name);
-}
-
-async function createJsQrVariants(file: File): Promise<PixelVariant[]> {
-  const img = await loadImage(file);
-  const variants: PixelVariant[] = [];
-
-  const buildVariant = (label: string, cropRatio: number, enhance = false) => {
-    const cropWidth = Math.round(img.naturalWidth * cropRatio);
-    const cropHeight = Math.round(img.naturalHeight * cropRatio);
-    const sx = Math.max(0, Math.round((img.naturalWidth - cropWidth) / 2));
-    const sy = Math.max(0, Math.round((img.naturalHeight - cropHeight) / 2));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = cropWidth;
-    canvas.height = cropHeight;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) {
-      throw new Error(`无法创建 ${label} 画布`);
-    }
-
-    if (enhance) {
-      ctx.filter = "grayscale(1) contrast(1.8) brightness(1.05)";
-    }
-    ctx.drawImage(
-      img,
-      sx,
-      sy,
-      cropWidth,
-      cropHeight,
-      0,
-      0,
-      cropWidth,
-      cropHeight,
-    );
-    ctx.filter = "none";
-
-    variants.push({
-      label,
-      imageData: ctx.getImageData(0, 0, cropWidth, cropHeight),
-    });
-  };
-
-  buildVariant("全图", 1);
-  buildVariant("中心裁剪90%", 0.9);
-  buildVariant("中心裁剪75%", 0.75);
-  buildVariant("中心裁剪60%", 0.6);
-  buildVariant("高对比全图", 1, true);
-  buildVariant("高对比中心裁剪75%", 0.75, true);
-
-  return variants;
-}
-
 async function createBarcodeCropVariant(
   file: File,
   label: string,
@@ -448,215 +326,27 @@ async function createQuaggaVariants(file: File): Promise<BarcodeFileVariant[]> {
   return variants;
 }
 
-async function detectWithFallback(
+async function detectWithQuagga(
   file: File,
   trace: TraceFn,
 ): Promise<ScanResult | null> {
   // 修正 EXIF 旋转信息（iOS 必须）
   const correctedFile = await normalizeOrientation(file, trace);
 
-  // 动态加载 html5-qrcode，实现分包按需加载
   trace({
-    step: "Fallback 引擎",
+    step: "Quagga 引擎",
     status: "info",
-    detail: "开始动态加载 html5-qrcode",
+    detail: "开始动态加载 Quagga2 并尝试条形码专用扫描",
   });
-  const { Html5Qrcode, Html5QrcodeSupportedFormats } =
-    await import("html5-qrcode");
+  const quaggaModule = await import("@ericblade/quagga2");
+  const Quagga = quaggaModule.default;
   trace({
-    step: "Fallback 引擎",
+    step: "Quagga 引擎",
     status: "success",
-    detail: "html5-qrcode 动态加载成功",
-  });
-
-  // html5-qrcode 内部通过 element.clientWidth 计算 canvas 尺寸，
-  // 如果容器是 display:none 则 clientWidth=0，图片会被降采样到 300px，
-  // 导致二维码像素被严重压缩，ZXing 无法识别。
-  // 必须使用 visibility:hidden + 足够大尺寸 + 离屏定位。
-  const tempId = `__qr_scanner_${Date.now()}`;
-  const container = document.createElement("div");
-  container.id = tempId;
-  Object.assign(container.style, {
-    position: "fixed",
-    left: "-9999px",
-    top: "-9999px",
-    width: "1920px",
-    height: "1920px",
-    visibility: "hidden",
-    overflow: "hidden",
-  });
-  document.body.appendChild(container);
-  trace({
-    step: "Fallback 容器",
-    status: "info",
-    detail: `容器尺寸 ${container.style.width} x ${container.style.height}`,
+    detail: "Quagga2 动态加载成功",
   });
 
   try {
-    const variants: ImageVariant[] = [{ label: "标准图", file: correctedFile }];
-
-    try {
-      variants.push({
-        label: "加白边图",
-        file: await createPaddedVariant(correctedFile, 0.16),
-      });
-      trace({
-        step: "Fallback 预处理",
-        status: "info",
-        detail: "已生成加白边变体",
-      });
-    } catch (error) {
-      trace({
-        step: "Fallback 预处理",
-        status: "warning",
-        detail: `加白边失败: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
-
-    try {
-      variants.push({
-        label: "高对比图",
-        file: await createEnhancedVariant(correctedFile),
-      });
-      trace({
-        step: "Fallback 预处理",
-        status: "info",
-        detail: "已生成高对比变体",
-      });
-    } catch (error) {
-      trace({
-        step: "Fallback 预处理",
-        status: "warning",
-        detail: `高对比处理失败: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
-
-    try {
-      variants.push({
-        label: "旋转90度图",
-        file: await createRotatedVariant(correctedFile, 90),
-      });
-      variants.push({
-        label: "旋转270度图",
-        file: await createRotatedVariant(correctedFile, 270),
-      });
-      trace({
-        step: "Fallback 预处理",
-        status: "info",
-        detail: "已生成旋转变体",
-      });
-    } catch (error) {
-      trace({
-        step: "Fallback 预处理",
-        status: "warning",
-        detail: `旋转处理失败: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
-
-    for (const variant of variants) {
-      const scanner = new Html5Qrcode(tempId, {
-        verbose: false,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-        ],
-      });
-
-      try {
-        trace({
-          step: "Fallback 尝试",
-          status: "info",
-          detail: `${variant.label} | ${variant.file.type || "unknown"} | ${Math.round(variant.file.size / 1024)}KB`,
-        });
-        const decodedText = await scanner.scanFile(variant.file, false);
-        trace({
-          step: "Fallback 尝试",
-          status: "success",
-          detail: `${variant.label} 识别成功`,
-        });
-        return { text: decodedText, format: "qr_code" };
-      } catch (error) {
-        trace({
-          step: "Fallback 尝试",
-          status: "warning",
-          detail: `${variant.label} 失败: ${error instanceof Error ? error.message : String(error)}`,
-        });
-      }
-    }
-
-    trace({
-      step: "Fallback 引擎",
-      status: "error",
-      detail: "所有预处理变体都未被 html5-qrcode 识别",
-    });
-
-    trace({
-      step: "jsQR 引擎",
-      status: "info",
-      detail: "开始动态加载 jsQR 并尝试二维码专用扫描",
-    });
-    const jsQrModule = await import("jsqr");
-    const jsQR = jsQrModule.default;
-    trace({
-      step: "jsQR 引擎",
-      status: "success",
-      detail: "jsQR 动态加载成功",
-    });
-
-    const pixelVariants = await createJsQrVariants(correctedFile);
-    for (const variant of pixelVariants) {
-      trace({
-        step: "jsQR 尝试",
-        status: "info",
-        detail: `${variant.label} | ${variant.imageData.width}x${variant.imageData.height}`,
-      });
-
-      const code = jsQR(
-        variant.imageData.data,
-        variant.imageData.width,
-        variant.imageData.height,
-        { inversionAttempts: "attemptBoth" },
-      );
-
-      if (code) {
-        trace({
-          step: "jsQR 尝试",
-          status: "success",
-          detail: `${variant.label} 识别成功`,
-        });
-        return { text: code.data, format: "qr_code" };
-      }
-
-      trace({
-        step: "jsQR 尝试",
-        status: "warning",
-        detail: `${variant.label} 未识别到二维码`,
-      });
-    }
-
-    trace({
-      step: "jsQR 引擎",
-      status: "error",
-      detail: "jsQR 的整图与中心裁剪扫描也全部失败",
-    });
-
-    trace({
-      step: "Quagga 引擎",
-      status: "info",
-      detail: "开始动态加载 Quagga2 并尝试条形码专用扫描",
-    });
-    const quaggaModule = await import("@ericblade/quagga2");
-    const Quagga = quaggaModule.default;
-    trace({
-      step: "Quagga 引擎",
-      status: "success",
-      detail: "Quagga2 动态加载成功",
-    });
-
     const quaggaVariants = await createQuaggaVariants(correctedFile);
     for (const variant of quaggaVariants) {
       trace({
@@ -736,13 +426,11 @@ async function detectWithFallback(
     return null;
   } catch (error) {
     trace({
-      step: "Fallback 引擎",
+      step: "Quagga 引擎",
       status: "error",
       detail: error instanceof Error ? error.message : String(error),
     });
     return null;
-  } finally {
-    container.remove();
   }
 }
 
