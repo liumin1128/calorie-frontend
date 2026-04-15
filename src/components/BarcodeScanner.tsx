@@ -143,6 +143,18 @@ interface PixelVariant {
   imageData: ImageData;
 }
 
+interface BarcodeFileVariant {
+  label: string;
+  file: File;
+}
+
+interface QuaggaDecodeResult {
+  codeResult?: {
+    code?: string | null;
+    format?: string | null;
+  };
+}
+
 async function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -371,6 +383,71 @@ async function createJsQrVariants(file: File): Promise<PixelVariant[]> {
   return variants;
 }
 
+async function createBarcodeCropVariant(
+  file: File,
+  label: string,
+  widthRatio: number,
+  heightRatio: number,
+  enhance = false,
+): Promise<File> {
+  const img = await loadImage(file);
+  const cropWidth = Math.round(img.naturalWidth * widthRatio);
+  const cropHeight = Math.round(img.naturalHeight * heightRatio);
+  const sx = Math.max(0, Math.round((img.naturalWidth - cropWidth) / 2));
+  const sy = Math.max(0, Math.round((img.naturalHeight - cropHeight) / 2));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cropWidth;
+  canvas.height = cropHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error(`无法创建 ${label}`);
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (enhance) {
+    ctx.filter = "grayscale(1) contrast(1.9) brightness(1.08)";
+  }
+  ctx.drawImage(
+    img,
+    sx,
+    sy,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    cropWidth,
+    cropHeight,
+  );
+  ctx.filter = "none";
+
+  return canvasToFile(canvas, file.name);
+}
+
+async function createQuaggaVariants(file: File): Promise<BarcodeFileVariant[]> {
+  const variants: BarcodeFileVariant[] = [{ label: "全图", file }];
+
+  variants.push({
+    label: "中带裁剪50%高",
+    file: await createBarcodeCropVariant(file, "中带裁剪50%高", 1, 0.5),
+  });
+  variants.push({
+    label: "中带裁剪35%高",
+    file: await createBarcodeCropVariant(file, "中带裁剪35%高", 1, 0.35),
+  });
+  variants.push({
+    label: "中带高对比50%高",
+    file: await createBarcodeCropVariant(file, "中带高对比50%高", 1, 0.5, true),
+  });
+  variants.push({
+    label: "中心裁剪80%x50%",
+    file: await createBarcodeCropVariant(file, "中心裁剪80%x50%", 0.8, 0.5),
+  });
+
+  return variants;
+}
+
 async function detectWithFallback(
   file: File,
   trace: TraceFn,
@@ -565,6 +642,96 @@ async function detectWithFallback(
       step: "jsQR 引擎",
       status: "error",
       detail: "jsQR 的整图与中心裁剪扫描也全部失败",
+    });
+
+    trace({
+      step: "Quagga 引擎",
+      status: "info",
+      detail: "开始动态加载 Quagga2 并尝试条形码专用扫描",
+    });
+    const quaggaModule = await import("@ericblade/quagga2");
+    const Quagga = quaggaModule.default;
+    trace({
+      step: "Quagga 引擎",
+      status: "success",
+      detail: "Quagga2 动态加载成功",
+    });
+
+    const quaggaVariants = await createQuaggaVariants(correctedFile);
+    for (const variant of quaggaVariants) {
+      trace({
+        step: "Quagga 尝试",
+        status: "info",
+        detail: `${variant.label} | ${variant.file.type || "unknown"} | ${Math.round(variant.file.size / 1024)}KB`,
+      });
+
+      const src = URL.createObjectURL(variant.file);
+      try {
+        const result = await new Promise<QuaggaDecodeResult | null>(
+          (resolve) => {
+            Quagga.decodeSingle(
+              {
+                src,
+                numOfWorkers: 0,
+                locate: true,
+                inputStream: {
+                  size: 0,
+                  singleChannel: false,
+                },
+                locator: {
+                  halfSample: false,
+                  patchSize: "small",
+                },
+                decoder: {
+                  readers: [
+                    "ean_reader",
+                    "ean_8_reader",
+                    "upc_reader",
+                    "upc_e_reader",
+                    "code_128_reader",
+                    "code_39_reader",
+                    "codabar_reader",
+                  ],
+                },
+              },
+              (data: QuaggaDecodeResult | null) => resolve(data),
+            );
+          },
+        );
+
+        const codeResult = result?.codeResult;
+        if (codeResult?.code) {
+          trace({
+            step: "Quagga 尝试",
+            status: "success",
+            detail: `${variant.label} 识别成功: ${codeResult.format || "unknown"}`,
+          });
+          return {
+            text: codeResult.code,
+            format: codeResult.format || "barcode",
+          };
+        }
+
+        trace({
+          step: "Quagga 尝试",
+          status: "warning",
+          detail: `${variant.label} 未识别到条形码`,
+        });
+      } catch (error) {
+        trace({
+          step: "Quagga 尝试",
+          status: "warning",
+          detail: `${variant.label} 失败: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      } finally {
+        URL.revokeObjectURL(src);
+      }
+    }
+
+    trace({
+      step: "Quagga 引擎",
+      status: "error",
+      detail: "Quagga2 的条形码专用扫描也全部失败",
     });
     return null;
   } catch (error) {
