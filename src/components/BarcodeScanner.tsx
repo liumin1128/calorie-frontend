@@ -138,6 +138,11 @@ interface ImageVariant {
   file: File;
 }
 
+interface PixelVariant {
+  label: string;
+  imageData: ImageData;
+}
+
 async function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -316,6 +321,56 @@ async function createRotatedVariant(
   return canvasToFile(canvas, file.name);
 }
 
+async function createJsQrVariants(file: File): Promise<PixelVariant[]> {
+  const img = await loadImage(file);
+  const variants: PixelVariant[] = [];
+
+  const buildVariant = (label: string, cropRatio: number, enhance = false) => {
+    const cropWidth = Math.round(img.naturalWidth * cropRatio);
+    const cropHeight = Math.round(img.naturalHeight * cropRatio);
+    const sx = Math.max(0, Math.round((img.naturalWidth - cropWidth) / 2));
+    const sy = Math.max(0, Math.round((img.naturalHeight - cropHeight) / 2));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) {
+      throw new Error(`无法创建 ${label} 画布`);
+    }
+
+    if (enhance) {
+      ctx.filter = "grayscale(1) contrast(1.8) brightness(1.05)";
+    }
+    ctx.drawImage(
+      img,
+      sx,
+      sy,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      cropWidth,
+      cropHeight,
+    );
+    ctx.filter = "none";
+
+    variants.push({
+      label,
+      imageData: ctx.getImageData(0, 0, cropWidth, cropHeight),
+    });
+  };
+
+  buildVariant("全图", 1);
+  buildVariant("中心裁剪90%", 0.9);
+  buildVariant("中心裁剪75%", 0.75);
+  buildVariant("中心裁剪60%", 0.6);
+  buildVariant("高对比全图", 1, true);
+  buildVariant("高对比中心裁剪75%", 0.75, true);
+
+  return variants;
+}
+
 async function detectWithFallback(
   file: File,
   trace: TraceFn,
@@ -460,6 +515,56 @@ async function detectWithFallback(
       step: "Fallback 引擎",
       status: "error",
       detail: "所有预处理变体都未被 html5-qrcode 识别",
+    });
+
+    trace({
+      step: "jsQR 引擎",
+      status: "info",
+      detail: "开始动态加载 jsQR 并尝试二维码专用扫描",
+    });
+    const jsQrModule = await import("jsqr");
+    const jsQR = jsQrModule.default;
+    trace({
+      step: "jsQR 引擎",
+      status: "success",
+      detail: "jsQR 动态加载成功",
+    });
+
+    const pixelVariants = await createJsQrVariants(correctedFile);
+    for (const variant of pixelVariants) {
+      trace({
+        step: "jsQR 尝试",
+        status: "info",
+        detail: `${variant.label} | ${variant.imageData.width}x${variant.imageData.height}`,
+      });
+
+      const code = jsQR(
+        variant.imageData.data,
+        variant.imageData.width,
+        variant.imageData.height,
+        { inversionAttempts: "attemptBoth" },
+      );
+
+      if (code) {
+        trace({
+          step: "jsQR 尝试",
+          status: "success",
+          detail: `${variant.label} 识别成功`,
+        });
+        return { text: code.data, format: "qr_code" };
+      }
+
+      trace({
+        step: "jsQR 尝试",
+        status: "warning",
+        detail: `${variant.label} 未识别到二维码`,
+      });
+    }
+
+    trace({
+      step: "jsQR 引擎",
+      status: "error",
+      detail: "jsQR 的整图与中心裁剪扫描也全部失败",
     });
     return null;
   } catch (error) {
