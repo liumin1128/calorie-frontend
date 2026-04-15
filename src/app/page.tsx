@@ -30,7 +30,6 @@ import CalorieStatsGrid from "@/components/CalorieStatsGrid";
 import CalorieRecordList from "@/components/CalorieRecordList";
 import DailyCalorieCalendar from "@/components/DailyCalorieCalendar";
 import CalorieRing from "@/components/CalorieRing";
-import { fadeUp } from "@/lib/animations";
 
 const CreateRecordDialog = dynamic(
   () => import("@/components/CreateRecordDialog"),
@@ -74,7 +73,7 @@ export default function Home() {
                 mb: 3,
                 border: "1px solid",
                 borderColor: "divider",
-                animation: `${fadeUp} 0.7s ease-out`,
+                animation: "fadeUp 0.7s ease-out both",
               }}
             >
               <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
@@ -143,7 +142,7 @@ export default function Home() {
             </Card>
 
             {/* Records */}
-            <Box sx={{ animation: `${fadeUp} 0.7s ease-out 0.15s both` }}>
+            <Box sx={{ animation: "fadeUp 0.7s ease-out 0.15s both" }}>
               <CalorieRecordList
                 entries={tracker.entries}
                 loading={tracker.loading}
@@ -159,7 +158,7 @@ export default function Home() {
 
           {/* 右栏 */}
           <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{ animation: `${fadeUp} 0.7s ease-out 0.2s both` }}>
+            <Box sx={{ animation: "fadeUp 0.7s ease-out 0.2s both" }}>
               <ProfileSummaryCard
                 profile={profile}
                 profileLoading={profileLoading}
