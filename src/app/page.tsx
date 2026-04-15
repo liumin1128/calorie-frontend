@@ -51,10 +51,6 @@ const AiAnalysisPreview = dynamic(
 const BarcodeScanner = dynamic(() => import("@/components/BarcodeScanner"), {
   ssr: false,
 });
-const BarcodeNutritionPreview = dynamic(
-  () => import("@/components/BarcodeNutritionPreview"),
-  { ssr: false },
-);
 
 export default function Home() {
   const { profile, loading: profileLoading } = useUserProfile();
@@ -232,17 +228,12 @@ export default function Home() {
 
       <BarcodeScanner
         open={tracker.qrScannerOpen}
-        onClose={tracker.handleCloseQrScanner}
-        onDetected={tracker.handleDetectedBarcode}
-      />
-
-      <BarcodeNutritionPreview
-        open={tracker.barcodePreviewOpen}
         loading={tracker.barcodePreviewLoading}
         submitting={tracker.barcodePreviewSubmitting}
         error={tracker.barcodePreviewError}
         preview={tracker.barcodePreviewData}
         onClose={tracker.handleCloseBarcodePreview}
+        onDetected={tracker.handleDetectedBarcode}
         onRetryScan={tracker.handleRetryBarcodeScan}
         onConfirm={tracker.handleConfirmBarcodePreview}
       />

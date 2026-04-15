@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -112,6 +113,36 @@ export default function BarcodeNutritionPreview({
   onRetryScan,
   onConfirm,
 }: Props) {
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!preview?.imageUrl) return;
+
+    let active = true;
+    const image = new Image();
+    const currentImageUrl = preview.imageUrl;
+
+    image.onload = () => {
+      if (!active) return;
+      setResolvedImageUrl(currentImageUrl);
+    };
+
+    image.onerror = () => {
+      if (!active) return;
+      setFailedImageUrl(currentImageUrl);
+      setResolvedImageUrl(currentImageUrl);
+    };
+
+    image.src = currentImageUrl;
+
+    return () => {
+      active = false;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [preview?.imageUrl]);
+
   const nutrientItems = [
     { label: "蛋白质", value: preview?.nutrition?.protein, unit: "g" },
     { label: "碳水", value: preview?.nutrition?.carbohydrates, unit: "g" },
@@ -130,6 +161,13 @@ export default function BarcodeNutritionPreview({
 
   const canConfirm =
     !!preview && typeof preview.calories === "number" && preview.calories >= 0;
+  const imageResolved =
+    !preview?.imageUrl || resolvedImageUrl === preview.imageUrl;
+  const imageFailed =
+    !!preview?.imageUrl && failedImageUrl === preview.imageUrl;
+  const waitingForImage = !!preview?.imageUrl && !imageResolved;
+  const displayPreview = !!preview && !waitingForImage;
+  const showEmptyState = !loading && !error && !preview;
 
   return (
     <Dialog
@@ -157,39 +195,28 @@ export default function BarcodeNutritionPreview({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, pb: 2 }}>
-        <Stack spacing={2}>
-          {loading && (
-            <Box
-              sx={{
-                minHeight: 220,
-                display: "grid",
-                placeItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <Stack spacing={1.5} alignItems="center">
-                <CircularProgress size={32} />
-                <Typography variant="body2" color="text.secondary">
-                  正在根据条码查询商品营养信息...
-                </Typography>
-              </Stack>
-            </Box>
-          )}
-
+      <DialogContent
+        sx={{
+          px: 3,
+          pb: 2,
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <Stack spacing={2} sx={{ minHeight: 220 }}>
           {!loading && error && !preview && (
             <Alert severity="error" sx={{ borderRadius: 3 }}>
               {error}
             </Alert>
           )}
 
-          {!loading && !error && !preview && (
+          {showEmptyState && (
             <Alert severity="info" sx={{ borderRadius: 3 }}>
               暂未获取到可预览的商品信息，请重新扫码。
             </Alert>
           )}
 
-          {preview && (
+          {displayPreview && preview && (
             <>
               {error && (
                 <Alert severity="error" sx={{ borderRadius: 3 }}>
@@ -218,7 +245,7 @@ export default function BarcodeNutritionPreview({
                     placeItems: "center",
                   }}
                 >
-                  {preview.imageUrl ? (
+                  {preview.imageUrl && !imageFailed ? (
                     <Box
                       component="img"
                       src={preview.imageUrl}
@@ -304,10 +331,55 @@ export default function BarcodeNutritionPreview({
               </Box>
             </>
           )}
+
+          {(loading || waitingForImage) && !displayPreview && (
+            <Box sx={{ flex: 1 }} />
+          )}
         </Stack>
+
+        {(loading || waitingForImage) && (
+          <Box
+            sx={(theme) => ({
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              bgcolor: "rgba(250,250,245,0.72)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              borderTop: `1px solid ${theme.palette.divider}`,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            })}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: 999,
+                display: "grid",
+                placeItems: "center",
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+                boxShadow: "0 10px 30px rgba(61,107,79,0.12)",
+              }}
+            >
+              <CircularProgress size={28} thickness={4.6} />
+            </Box>
+          </Box>
+        )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: 3,
+          pt: 0,
+          opacity: loading ? 0 : 1,
+          pointerEvents: loading ? "none" : "auto",
+          transition: "opacity 160ms ease",
+        }}
+      >
         <Button onClick={onClose} disabled={submitting}>
           {preview ? "取消" : "关闭"}
         </Button>

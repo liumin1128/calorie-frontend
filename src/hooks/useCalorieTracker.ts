@@ -53,7 +53,6 @@ export interface UseCalorieTrackerReturn {
   autoTriggerImage: boolean;
   aiPreviewOpen: boolean;
   qrScannerOpen: boolean;
-  barcodePreviewOpen: boolean;
   barcodePreviewLoading: boolean;
   barcodePreviewSubmitting: boolean;
   barcodePreviewError: string | null;
@@ -104,7 +103,6 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   const [autoTriggerImage, setAutoTriggerImage] = useState(false);
   const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
-  const [barcodePreviewOpen, setBarcodePreviewOpen] = useState(false);
   const [barcodePreviewLoading, setBarcodePreviewLoading] = useState(false);
   const [barcodePreviewSubmitting, setBarcodePreviewSubmitting] =
     useState(false);
@@ -115,9 +113,8 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     useState<BarcodeNutritionPreview | null>(null);
   const barcodeLookupIdRef = useRef(0);
 
-  const resetBarcodePreviewState = (options?: { keepOpen?: boolean }) => {
+  const resetBarcodePreviewState = () => {
     barcodeLookupIdRef.current += 1;
-    setBarcodePreviewOpen(options?.keepOpen ?? false);
     setBarcodePreviewLoading(false);
     setBarcodePreviewSubmitting(false);
     setBarcodePreviewError(null);
@@ -224,8 +221,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
 
     const requestId = barcodeLookupIdRef.current + 1;
     barcodeLookupIdRef.current = requestId;
-    setQrScannerOpen(false);
-    setBarcodePreviewOpen(true);
+    setQrScannerOpen(true);
     setBarcodePreviewLoading(true);
     setBarcodePreviewSubmitting(false);
     setBarcodePreviewError(null);
@@ -249,6 +245,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
 
   const handleCloseBarcodePreview = () => {
     resetBarcodePreviewState();
+    setQrScannerOpen(false);
   };
 
   const handleRetryBarcodeScan = () => {
@@ -300,7 +297,6 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     autoTriggerImage,
     aiPreviewOpen,
     qrScannerOpen,
-    barcodePreviewOpen,
     barcodePreviewLoading,
     barcodePreviewSubmitting,
     barcodePreviewError,
@@ -316,7 +312,10 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     handleCloseSelector,
     handleSelectEntryType,
     handleCloseAiPreview,
-    handleCloseQrScanner: () => setQrScannerOpen(false),
+    handleCloseQrScanner: () => {
+      resetBarcodePreviewState();
+      setQrScannerOpen(false);
+    },
     handleDetectedBarcode,
     handleCloseBarcodePreview,
     handleRetryBarcodeScan,
