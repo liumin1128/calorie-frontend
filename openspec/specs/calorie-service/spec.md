@@ -60,3 +60,11 @@
 #### Scenario: 类型包含所有后端字段
 - **WHEN** 定义 `CalorieEntry` 类型
 - **THEN** SHALL 包含 `_id: string`、`userId: string`、`type: "intake" | "burn"`、`calories: number`、`title: string`、`description?: string`、`images?: string[]`、`entryDate: string`、`createdAt: string`、`updatedAt: string`
+- **THEN** SHALL 包含 `source?: EntrySource`（"manual" | "healthkit" | "barcode" | "ai"）和 `externalId?: string` 可选字段
+- **THEN** SHALL 包含 `water?: number`、`nutrition?: NutritionInfo`（protein、carbohydrates、fat、fiber）和 `minerals?: MineralsInfo` 可选字段
+
+#### Scenario: CreateCalorieEntryDto 支持提交完整数据
+- **WHEN** 前端创建或更新记录
+- **THEN** CreateCalorieEntryDto SHALL 包含可选的 source 和 externalId 字段
+- **THEN** CreateCalorieEntryDto SHALL 包含可选的 water、nutrition 和 minerals 字段
+- **THEN** UpdateCalorieEntryDto 自动继承新增字段（Partial 类型）

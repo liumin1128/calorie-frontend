@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
@@ -12,19 +9,37 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import Stack from "@mui/material/Stack";
+import Slide from "@mui/material/Slide";
+import type { TransitionProps } from "@mui/material/transitions";
+import { forwardRef } from "react";
 import dayjs from "dayjs";
 import type {
   CalorieType,
   CalorieEntry,
   CreateCalorieEntryDto,
   PresetItem,
+  NutritionInfo,
+  MineralsInfo,
+  MealType,
 } from "@/types/calorie";
-import { foodPresets, exercisePresets } from "@/types/calorie";
+import {
+  foodPresets,
+  exercisePresets,
+  mealTypeLabels,
+  getDefaultMealType,
+} from "@/types/calorie";
+import { mineralLabels } from "@/utils/calorie";
 import { useAuth } from "@/contexts/AuthContext";
 import ImageUploadAnalyzer from "@/components/ImageUploadAnalyzer";
 import type { ImageUploadAnalyzerRef } from "@/components/ImageUploadAnalyzer";
+
+const SlideUp = forwardRef(function SlideUp(
+  props: TransitionProps & { children: React.ReactElement },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 interface Props {
   open: boolean;
@@ -56,18 +71,50 @@ export default function CreateRecordDialog({
 }: Props) {
   const isEdit = !!initialData;
   const { token } = useAuth();
-  const [type, setType] = useState<CalorieType>("intake");
-  const [title, setTitle] = useState("");
-  const [calories, setCalories] = useState<number>(0);
-  const [date, setDate] = useState(getToday);
-  const [time, setTime] = useState(getNowTime);
+
+  // 直接从 props 初始化 state，确保 Dialog 重新挂载时首帧即正确
+  const [type, setType] = useState<CalorieType>(initialData?.type ?? "intake");
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [calories, setCalories] = useState<number>(initialData?.calories ?? 0);
+  const [date, setDate] = useState(() =>
+    initialData
+      ? dayjs(initialData.entryDate).format("YYYY-MM-DD")
+      : (defaultDate ?? getToday()),
+  );
+  const [time, setTime] = useState(() => {
+    if (initialData) {
+      const dt = new Date(initialData.entryDate);
+      return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+    }
+    return getNowTime();
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageKey, setImageKey] = useState(0);
   const imageAnalyzerRef = useRef<ImageUploadAnalyzerRef>(null);
 
+  // 营养信息状态 — 从 initialData 初始化
+  const [protein, setProtein] = useState<number | "">(
+    initialData?.nutrition?.protein ?? "",
+  );
+  const [carbohydrates, setCarbohydrates] = useState<number | "">(
+    initialData?.nutrition?.carbohydrates ?? "",
+  );
+  const [fat, setFat] = useState<number | "">(
+    initialData?.nutrition?.fat ?? "",
+  );
+  const [fiber, setFiber] = useState<number | "">(
+    initialData?.nutrition?.fiber ?? "",
+  );
+  const [water, setWater] = useState<number | "">(initialData?.water ?? "");
+  const [mealType, setMealType] = useState<MealType>(
+    initialData?.mealType ?? getDefaultMealType,
+  );
+
   const effectiveType = lockedType ?? type;
   const presets = effectiveType === "intake" ? foodPresets : exercisePresets;
+  const isBarcode = initialData?.source === "barcode";
+  const isReadonlyNutrition = isBarcode || initialData?.source === "healthkit";
 
   const handleReset = useCallback(() => {
     setType(lockedType ?? "intake");
@@ -77,6 +124,12 @@ export default function CreateRecordDialog({
     setTime(getNowTime());
     setError(null);
     setImageKey((k) => k + 1);
+    setProtein("");
+    setCarbohydrates("");
+    setFat("");
+    setFiber("");
+    setWater("");
+    setMealType(getDefaultMealType());
   }, [defaultDate, lockedType]);
 
   useEffect(() => {
@@ -90,6 +143,12 @@ export default function CreateRecordDialog({
         `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
       );
       setError(null);
+      setProtein(initialData.nutrition?.protein ?? "");
+      setCarbohydrates(initialData.nutrition?.carbohydrates ?? "");
+      setFat(initialData.nutrition?.fat ?? "");
+      setFiber(initialData.nutrition?.fiber ?? "");
+      setWater(initialData.water ?? "");
+      setMealType(initialData.mealType ?? getDefaultMealType());
     } else if (open) {
       handleReset();
     }
@@ -110,11 +169,24 @@ export default function CreateRecordDialog({
     setSubmitting(true);
     setError(null);
     try {
+      // 构建 nutrition 对象，未填字段不传
+      const nutrition: NutritionInfo = {};
+      if (protein !== "") nutrition.protein = Number(protein);
+      if (carbohydrates !== "") nutrition.carbohydrates = Number(carbohydrates);
+      if (fat !== "") nutrition.fat = Number(fat);
+      if (fiber !== "") nutrition.fiber = Number(fiber);
+      const hasNutrition = Object.keys(nutrition).length > 0;
+
       await onSubmit({
         type: effectiveType,
         title,
         calories,
         entryDate: new Date(`${date}T${time}`).toISOString(),
+        ...(effectiveType === "intake" ? { mealType } : {}),
+        ...(effectiveType === "intake" && hasNutrition ? { nutrition } : {}),
+        ...(effectiveType === "intake" && water !== ""
+          ? { water: Number(water) }
+          : {}),
       });
       handleReset();
       onClose();
@@ -131,140 +203,315 @@ export default function CreateRecordDialog({
     onClose();
   };
 
-  return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {isEdit
-          ? "编辑记录"
-          : lockedType
-            ? lockedType === "intake"
-              ? "新增饮食记录"
-              : "新增运动记录"
-            : "新增记录"}
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: 1 }}>
-          {!lockedType && (
-            <ToggleButtonGroup
-              value={effectiveType}
-              exclusive
-              onChange={(_, v) => {
-                if (v) {
-                  setType(v);
-                  setTitle("");
-                  setCalories(0);
-                  setImageKey((k) => k + 1);
-                }
-              }}
-              fullWidth
-            >
-              <ToggleButton value="intake">
-                <RestaurantIcon sx={{ mr: 1 }} /> 饮食
-              </ToggleButton>
-              <ToggleButton value="burn">
-                <FitnessCenterIcon sx={{ mr: 1 }} /> 运动
-              </ToggleButton>
-            </ToggleButtonGroup>
-          )}
+  /* 统一表单字段样式 */
+  const fieldSx = {
+    "& .MuiInput-underline:before": { borderColor: "divider" },
+  };
 
-          {effectiveType === "intake" && token && (
-            <ImageUploadAnalyzer
-              key={imageKey}
-              ref={imageAnalyzerRef}
-              token={token}
-              onAnalyzed={({ title: t, calories: c }) => {
-                setTitle(t);
-                setCalories(c);
-              }}
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      TransitionComponent={SlideUp}
+      PaperProps={{ sx: { borderRadius: 1, overflow: "hidden" } }}
+    >
+      <Box sx={{ px: 3, pt: 2.5, pb: 0.5 }}>
+        <Typography variant="h6" fontWeight={700} sx={{ fontSize: 18 }}>
+          {isEdit
+            ? "编辑记录"
+            : effectiveType === "intake"
+              ? "新增饮食记录"
+              : "新增运动记录"}
+        </Typography>
+      </Box>
+
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2.5,
+        }}
+      >
+        {/* AI 图片识别 */}
+        {effectiveType === "intake" && !isEdit && token && (
+          <ImageUploadAnalyzer
+            key={imageKey}
+            ref={imageAnalyzerRef}
+            token={token}
+            onAnalyzed={({ title: t, calories: c }) => {
+              setTitle(t);
+              setCalories(c);
+            }}
+          />
+        )}
+
+        {/* 描述 */}
+        <Autocomplete
+          freeSolo
+          options={presets}
+          getOptionLabel={(option: string | PresetItem) =>
+            typeof option === "string" ? option : option.label
+          }
+          onChange={(_, value) => {
+            if (value && typeof value === "object") {
+              setTitle((value as PresetItem).label);
+              setCalories((value as PresetItem).calories);
+            }
+          }}
+          onInputChange={(_, value) => setTitle(value)}
+          inputValue={title}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              variant="standard"
+              label={effectiveType === "intake" ? "食物描述" : "运动描述"}
+              placeholder={
+                effectiveType === "intake" ? "输入或选择食物" : "输入或选择运动"
+              }
+              sx={fieldSx}
             />
           )}
+        />
 
-          <Autocomplete
-            freeSolo
-            options={presets}
-            getOptionLabel={(option: string | PresetItem) =>
-              typeof option === "string" ? option : option.label
-            }
-            onChange={(_, value) => {
-              if (value && typeof value === "object") {
-                setTitle((value as PresetItem).label);
-                setCalories((value as PresetItem).calories);
-              }
-            }}
-            onInputChange={(_, value) => setTitle(value)}
-            inputValue={title}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={effectiveType === "intake" ? "食物描述" : "运动描述"}
-                placeholder={
-                  effectiveType === "intake"
-                    ? "输入或选择食物"
-                    : "输入或选择运动"
-                }
-              />
-            )}
-          />
+        {/* 卡路里 */}
+        <TextField
+          variant="standard"
+          label={
+            effectiveType === "intake"
+              ? "摄入卡路里 (kcal)"
+              : "消耗卡路里 (kcal)"
+          }
+          type="number"
+          value={calories || ""}
+          onChange={(e) => setCalories(Number(e.target.value))}
+          sx={fieldSx}
+        />
 
+        {/* 餐食类型（仅摄入） */}
+        {effectiveType === "intake" && (
+          <Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mb: 0.75, display: "block" }}
+            >
+              餐食类型
+            </Typography>
+            <ToggleButtonGroup
+              value={mealType}
+              exclusive
+              size="small"
+              onChange={(_, val) => {
+                if (val) setMealType(val);
+              }}
+              sx={{
+                "& .MuiToggleButton-root": {
+                  px: 2,
+                  py: 0.5,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  textTransform: "none",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  color: "text.secondary",
+                  "&.Mui-selected": {
+                    bgcolor: "primary.main",
+                    color: "#fff",
+                    fontWeight: 600,
+                    borderColor: "primary.main",
+                    "&:hover": { bgcolor: "primary.dark" },
+                  },
+                },
+              }}
+            >
+              {(["breakfast", "lunch", "dinner", "snack"] as MealType[]).map(
+                (mt) => (
+                  <ToggleButton key={mt} value={mt}>
+                    {mealTypeLabels[mt]}
+                  </ToggleButton>
+                ),
+              )}
+            </ToggleButtonGroup>
+          </Box>
+        )}
+
+        {/* 日期 + 时间 */}
+        <Stack direction="row" spacing={2}>
           <TextField
+            variant="standard"
             label="日期"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ flex: 1, ...fieldSx }}
           />
-
           <TextField
+            variant="standard"
             label="时间"
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ width: 120, ...fieldSx }}
           />
+        </Stack>
 
-          <TextField
-            label={
-              effectiveType === "intake"
-                ? "摄入卡路里 (kcal)"
-                : "消耗卡路里 (kcal)"
-            }
-            type="number"
-            value={calories || ""}
-            onChange={(e) => setCalories(Number(e.target.value))}
-            helperText="选择预设项自动填充，也可手动输入"
-          />
-
-          {calories > 0 && (
+        {/* 营养成分（仅摄入类型） */}
+        {effectiveType === "intake" && (
+          <Box>
             <Typography
-              variant="body2"
+              variant="caption"
               color="text.secondary"
-              textAlign="center"
+              sx={{ mb: 0.75, display: "block" }}
             >
-              {effectiveType === "intake"
-                ? `🍽️ 将摄入 ${Math.round(calories)} kcal`
-                : `🏃 将消耗 ${Math.round(calories)} kcal`}
+              营养成分{isReadonlyNutrition ? "（只读）" : "（可选）"}
             </Typography>
-          )}
+            <Stack direction="row" spacing={1.5}>
+              <TextField
+                variant="standard"
+                label="蛋白质(g)"
+                size="small"
+                type="number"
+                value={protein}
+                onChange={(e) =>
+                  setProtein(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+                slotProps={{ input: { readOnly: isReadonlyNutrition } }}
+                sx={{ flex: 1, ...fieldSx }}
+              />
+              <TextField
+                variant="standard"
+                label="碳水(g)"
+                size="small"
+                type="number"
+                value={carbohydrates}
+                onChange={(e) =>
+                  setCarbohydrates(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+                slotProps={{ input: { readOnly: isReadonlyNutrition } }}
+                sx={{ flex: 1, ...fieldSx }}
+              />
+              <TextField
+                variant="standard"
+                label="脂肪(g)"
+                size="small"
+                type="number"
+                value={fat}
+                onChange={(e) =>
+                  setFat(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                slotProps={{ input: { readOnly: isReadonlyNutrition } }}
+                sx={{ flex: 1, ...fieldSx }}
+              />
+              <TextField
+                variant="standard"
+                label="纤维(g)"
+                size="small"
+                type="number"
+                value={fiber}
+                onChange={(e) =>
+                  setFiber(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                slotProps={{ input: { readOnly: isReadonlyNutrition } }}
+                sx={{ flex: 1, ...fieldSx }}
+              />
+            </Stack>
+            <TextField
+              variant="standard"
+              label="水分(ml)"
+              size="small"
+              type="number"
+              value={water}
+              onChange={(e) =>
+                setWater(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              slotProps={{ input: { readOnly: isReadonlyNutrition } }}
+              sx={{ mt: 1.5, width: 120, ...fieldSx }}
+            />
+          </Box>
+        )}
 
-          {error && (
-            <Typography variant="body2" color="error" textAlign="center">
-              {error}
+        {/* 矿物质只读展示 */}
+        {isBarcode && initialData?.minerals && (
+          <Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mb: 0.5, display: "block" }}
+            >
+              微量元素（只读）
             </Typography>
-          )}
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={submitting}>
+            <Stack direction="row" flexWrap="wrap" gap={0.75}>
+              {(
+                Object.entries(initialData.minerals) as [
+                  keyof MineralsInfo,
+                  number | undefined,
+                ][]
+              ).map(([key, value]) => {
+                if (!value) return null;
+                const lbl = mineralLabels[key];
+                return (
+                  <Typography
+                    key={key}
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontSize: 12 }}
+                  >
+                    {lbl?.name ?? key} {value}
+                    {lbl?.unit ?? ""}
+                  </Typography>
+                );
+              })}
+            </Stack>
+          </Box>
+        )}
+
+        {/* 错误提示 */}
+        {error && (
+          <Typography variant="body2" color="error" textAlign="center">
+            {error}
+          </Typography>
+        )}
+      </Box>
+
+      {/* 底部操作 */}
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{ px: 3, pb: 2.5, pt: 1 }}
+        justifyContent="flex-end"
+      >
+        <Button
+          onClick={handleClose}
+          disabled={submitting}
+          sx={{ textTransform: "none", color: "text.secondary" }}
+        >
           取消
         </Button>
         <Button
           variant="contained"
+          disableElevation
           onClick={handleSubmit}
           disabled={!title || calories <= 0 || submitting}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            borderRadius: 0.5,
+            px: 3,
+          }}
         >
           {submitting ? "提交中..." : isEdit ? "保存修改" : "确认添加"}
         </Button>
-      </DialogActions>
+      </Stack>
     </Dialog>
   );
 }

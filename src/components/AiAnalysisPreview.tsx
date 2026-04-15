@@ -83,6 +83,7 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
       `${date}T${new Date().toTimeString().slice(0, 5)}`,
     ).toISOString(),
     mealType: f.mealType,
+    source: "ai",
     nutrition: {
       protein: f.protein,
       carbohydrates: f.carbohydrates,

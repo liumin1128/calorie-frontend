@@ -24,6 +24,8 @@ export type CalorieType = "intake" | "burn";
 
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
+export type EntrySource = "manual" | "healthkit" | "barcode" | "ai";
+
 export interface NutritionInfo {
   protein?: number;
   carbohydrates?: number;
@@ -57,6 +59,8 @@ export interface CalorieEntry {
   description?: string;
   images?: string[];
   mealType?: MealType;
+  source?: EntrySource;
+  externalId?: string;
   nutrition?: NutritionInfo;
   minerals?: MineralsInfo;
   entryDate: string;
@@ -72,6 +76,8 @@ export interface CreateCalorieEntryDto {
   description?: string;
   entryDate: string;
   mealType?: MealType;
+  source?: EntrySource;
+  externalId?: string;
   nutrition?: NutritionInfo;
   minerals?: MineralsInfo;
 }
