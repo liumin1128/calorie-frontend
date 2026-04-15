@@ -32,32 +32,95 @@ interface ScanResult {
   format: string;
 }
 
+interface DebugEntry {
+  step: string;
+  status: "info" | "success" | "warning" | "error";
+  detail: string;
+}
+
+type TraceFn = (entry: DebugEntry) => void;
+
 /* ---------- 检测策略：原生优先，html5-qrcode 兜底 ---------- */
 
 function checkNativeDetector(): boolean {
   return typeof globalThis !== "undefined" && "BarcodeDetector" in globalThis;
 }
 
-async function detectBarcode(file: File): Promise<ScanResult | null> {
+async function detectBarcode(
+  file: File,
+  trace: TraceFn,
+): Promise<ScanResult | null> {
+  trace({
+    step: "文件检查",
+    status: "info",
+    detail: `${file.name} | ${file.type || "unknown"} | ${Math.round(file.size / 1024)}KB`,
+  });
+
   // 级联策略：先尝试原生 API，不可用或失败时 fallback 到 html5-qrcode
   if (checkNativeDetector()) {
-    const result = await detectWithNative(file);
+    trace({
+      step: "引擎选择",
+      status: "info",
+      detail: "检测到 BarcodeDetector，先尝试原生引擎",
+    });
+    const result = await detectWithNative(file, trace);
     if (result) return result;
+    trace({
+      step: "引擎切换",
+      status: "warning",
+      detail: "原生引擎未识别到结果，继续尝试 html5-qrcode",
+    });
+  } else {
+    trace({
+      step: "引擎选择",
+      status: "warning",
+      detail: "当前浏览器不支持 BarcodeDetector，直接使用 html5-qrcode",
+    });
   }
-  return detectWithFallback(file);
+  return detectWithFallback(file, trace);
 }
 
-async function detectWithNative(file: File): Promise<ScanResult | null> {
-  const detector = new (
-    globalThis as unknown as { BarcodeDetector: BarcodeDetectorConstructor }
-  ).BarcodeDetector();
-  const bitmap = await createImageBitmap(file);
-  const barcodes = await detector.detect(bitmap);
-  bitmap.close();
-  if (barcodes.length > 0) {
-    return { text: barcodes[0].rawValue, format: barcodes[0].format };
+async function detectWithNative(
+  file: File,
+  trace: TraceFn,
+): Promise<ScanResult | null> {
+  try {
+    const detector = new (
+      globalThis as unknown as { BarcodeDetector: BarcodeDetectorConstructor }
+    ).BarcodeDetector();
+    trace({
+      step: "原生引擎",
+      status: "info",
+      detail: "BarcodeDetector 实例创建成功",
+    });
+
+    const bitmap = await createImageBitmap(file);
+    trace({
+      step: "原生引擎",
+      status: "info",
+      detail: `createImageBitmap 成功: ${bitmap.width}x${bitmap.height}`,
+    });
+
+    const barcodes = await detector.detect(bitmap);
+    bitmap.close();
+    trace({
+      step: "原生引擎",
+      status: barcodes.length > 0 ? "success" : "warning",
+      detail: `检测完成，结果数量: ${barcodes.length}`,
+    });
+
+    if (barcodes.length > 0) {
+      return { text: barcodes[0].rawValue, format: barcodes[0].format };
+    }
+    return null;
+  } catch (error) {
+    trace({
+      step: "原生引擎",
+      status: "error",
+      detail: error instanceof Error ? error.message : "未知原生识别错误",
+    });
+    return null;
   }
-  return null;
 }
 
 /**
@@ -70,12 +133,18 @@ async function detectWithNative(file: File): Promise<ScanResult | null> {
  */
 const MAX_DIM = 1920;
 
-async function normalizeOrientation(file: File): Promise<File> {
+async function normalizeOrientation(file: File, trace: TraceFn): Promise<File> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
+
+      trace({
+        step: "图片加载",
+        status: "info",
+        detail: `原图尺寸: ${img.naturalWidth}x${img.naturalHeight}`,
+      });
 
       // 等比缩放，长边不超过 MAX_DIM
       let { naturalWidth: w, naturalHeight: h } = img;
@@ -83,6 +152,17 @@ async function normalizeOrientation(file: File): Promise<File> {
         const scale = MAX_DIM / Math.max(w, h);
         w = Math.round(w * scale);
         h = Math.round(h * scale);
+        trace({
+          step: "图片缩放",
+          status: "info",
+          detail: `缩放后尺寸: ${w}x${h}`,
+        });
+      } else {
+        trace({
+          step: "图片缩放",
+          status: "info",
+          detail: "尺寸无需缩放",
+        });
       }
 
       const canvas = document.createElement("canvas");
@@ -90,6 +170,11 @@ async function normalizeOrientation(file: File): Promise<File> {
       canvas.height = h;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
+        trace({
+          step: "Canvas",
+          status: "error",
+          detail: "无法获取 2D context，回退使用原始文件",
+        });
         resolve(file);
         return;
       }
@@ -97,9 +182,19 @@ async function normalizeOrientation(file: File): Promise<File> {
       canvas.toBlob(
         (blob) => {
           if (!blob) {
+            trace({
+              step: "Canvas",
+              status: "error",
+              detail: "toBlob 返回空值，回退使用原始文件",
+            });
             resolve(file);
             return;
           }
+          trace({
+            step: "Canvas",
+            status: "success",
+            detail: `重绘成功，输出 ${(blob.size / 1024).toFixed(0)}KB JPEG`,
+          });
           resolve(new File([blob], file.name, { type: "image/jpeg" }));
         },
         "image/jpeg",
@@ -108,18 +203,36 @@ async function normalizeOrientation(file: File): Promise<File> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
+      trace({
+        step: "图片加载",
+        status: "error",
+        detail: "浏览器无法加载该图片文件，可能是 HEIC/HEIF 或文件损坏",
+      });
       reject(new Error("图片加载失败"));
     };
     img.src = url;
   });
 }
 
-async function detectWithFallback(file: File): Promise<ScanResult | null> {
+async function detectWithFallback(
+  file: File,
+  trace: TraceFn,
+): Promise<ScanResult | null> {
   // 修正 EXIF 旋转信息（iOS 必须）
-  const correctedFile = await normalizeOrientation(file);
+  const correctedFile = await normalizeOrientation(file, trace);
 
   // 动态加载 html5-qrcode，实现分包按需加载
+  trace({
+    step: "Fallback 引擎",
+    status: "info",
+    detail: "开始动态加载 html5-qrcode",
+  });
   const { Html5Qrcode } = await import("html5-qrcode");
+  trace({
+    step: "Fallback 引擎",
+    status: "success",
+    detail: "html5-qrcode 动态加载成功",
+  });
 
   // html5-qrcode 内部通过 element.clientWidth 计算 canvas 尺寸，
   // 如果容器是 display:none 则 clientWidth=0，图片会被降采样到 300px，
@@ -138,12 +251,32 @@ async function detectWithFallback(file: File): Promise<ScanResult | null> {
     overflow: "hidden",
   });
   document.body.appendChild(container);
+  trace({
+    step: "Fallback 容器",
+    status: "info",
+    detail: `容器尺寸 ${container.style.width} x ${container.style.height}`,
+  });
 
   try {
     const scanner = new Html5Qrcode(tempId);
+    trace({
+      step: "Fallback 引擎",
+      status: "info",
+      detail: `开始 scanFile，输入 ${correctedFile.type || "unknown"} | ${Math.round(correctedFile.size / 1024)}KB`,
+    });
     const decodedText = await scanner.scanFile(correctedFile, false);
+    trace({
+      step: "Fallback 引擎",
+      status: "success",
+      detail: "html5-qrcode 识别成功",
+    });
     return { text: decodedText, format: "qr_code" };
-  } catch {
+  } catch (error) {
+    trace({
+      step: "Fallback 引擎",
+      status: "error",
+      detail: error instanceof Error ? error.message : String(error),
+    });
     return null;
   } finally {
     container.remove();
@@ -166,11 +299,17 @@ export default function BarcodeScanner({ open, onClose }: Props) {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [debugEntries, setDebugEntries] = useState<DebugEntry[]>([]);
+
+  const appendDebug = useCallback((entry: DebugEntry) => {
+    setDebugEntries((prev) => [...prev, entry]);
+  }, []);
 
   /* ---- 重置状态 ---- */
   const reset = useCallback(() => {
     setStatus("idle");
     setErrorMsg("");
+    setDebugEntries([]);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -187,26 +326,53 @@ export default function BarcodeScanner({ open, onClose }: Props) {
   }, [open, reset]);
 
   /* ---- 识别图片中的条码 ---- */
-  const detectFromFile = useCallback(async (file: File) => {
-    setStatus("detecting");
-    setErrorMsg("");
+  const detectFromFile = useCallback(
+    async (file: File) => {
+      setStatus("detecting");
+      setErrorMsg("");
+      setDebugEntries([]);
 
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
 
-    try {
-      const result = await detectBarcode(file);
-      if (result) {
-        setStatus("success");
-        alert(`扫描成功！\n格式: ${result.format}\n内容: ${result.text}`);
-      } else {
-        setStatus("not-found");
+      appendDebug({
+        step: "环境信息",
+        status: "info",
+        detail: navigator.userAgent,
+      });
+
+      try {
+        const result = await detectBarcode(file, appendDebug);
+        if (result) {
+          setStatus("success");
+          appendDebug({
+            step: "最终结果",
+            status: "success",
+            detail: `识别成功: ${result.format} | ${result.text}`,
+          });
+          alert(`扫描成功！\n格式: ${result.format}\n内容: ${result.text}`);
+        } else {
+          setStatus("not-found");
+          appendDebug({
+            step: "最终结果",
+            status: "warning",
+            detail: "所有引擎都未识别到有效码值",
+          });
+        }
+      } catch (error) {
+        setStatus("error");
+        const detail =
+          error instanceof Error ? error.message : "识别失败，请尝试其他图片";
+        setErrorMsg(detail);
+        appendDebug({
+          step: "最终结果",
+          status: "error",
+          detail,
+        });
       }
-    } catch {
-      setStatus("error");
-      setErrorMsg("识别失败，请尝试其他图片");
-    }
-  }, []);
+    },
+    [appendDebug],
+  );
 
   /* ---- 文件选择处理 ---- */
   const handleFileChange = useCallback(
@@ -317,6 +483,49 @@ export default function BarcodeScanner({ open, onClose }: Props) {
             <Alert severity="error" sx={{ width: "100%", borderRadius: 3 }}>
               {errorMsg}
             </Alert>
+          )}
+
+          {debugEntries.length > 0 && (
+            <Box
+              sx={{
+                width: "100%",
+                borderRadius: 3,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                p: 1.5,
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                调试信息
+              </Typography>
+              <Stack spacing={1}>
+                {debugEntries.map((entry, index) => (
+                  <Box key={`${entry.step}-${index}`}>
+                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                      {index + 1}. {entry.step}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        color:
+                          entry.status === "error"
+                            ? "error.main"
+                            : entry.status === "warning"
+                              ? "warning.main"
+                              : entry.status === "success"
+                                ? "success.main"
+                                : "text.secondary",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {entry.detail}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
           )}
 
           {/* 操作按钮 */}
