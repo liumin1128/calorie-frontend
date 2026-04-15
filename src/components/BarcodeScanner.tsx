@@ -133,6 +133,46 @@ async function detectWithNative(
  */
 const MAX_DIM = 1920;
 
+interface ImageVariant {
+  label: string;
+  file: File;
+}
+
+async function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("图片加载失败"));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToFile(
+  canvas: HTMLCanvasElement,
+  fileName: string,
+): Promise<File> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Canvas 导出失败"));
+          return;
+        }
+        resolve(new File([blob], fileName, { type: "image/jpeg" }));
+      },
+      "image/jpeg",
+      0.92,
+    );
+  });
+}
+
 async function normalizeOrientation(file: File, trace: TraceFn): Promise<File> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -214,6 +254,68 @@ async function normalizeOrientation(file: File, trace: TraceFn): Promise<File> {
   });
 }
 
+async function createPaddedVariant(
+  file: File,
+  paddingRatio: number,
+): Promise<File> {
+  const img = await loadImage(file);
+  const paddingX = Math.round(img.naturalWidth * paddingRatio);
+  const paddingY = Math.round(img.naturalHeight * paddingRatio);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth + paddingX * 2;
+  canvas.height = img.naturalHeight + paddingY * 2;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("无法创建白边变换");
+  }
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, paddingX, paddingY, img.naturalWidth, img.naturalHeight);
+  return canvasToFile(canvas, file.name);
+}
+
+async function createEnhancedVariant(file: File): Promise<File> {
+  const img = await loadImage(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("无法创建增强变换");
+  }
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.filter = "grayscale(1) contrast(1.5) brightness(1.05)";
+  ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+  ctx.filter = "none";
+  return canvasToFile(canvas, file.name);
+}
+
+async function createRotatedVariant(
+  file: File,
+  degrees: 90 | 180 | 270,
+): Promise<File> {
+  const img = await loadImage(file);
+  const canvas = document.createElement("canvas");
+  const swap = degrees === 90 || degrees === 270;
+  canvas.width = swap ? img.naturalHeight : img.naturalWidth;
+  canvas.height = swap ? img.naturalWidth : img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("无法创建旋转变换");
+  }
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((degrees * Math.PI) / 180);
+  ctx.drawImage(
+    img,
+    -img.naturalWidth / 2,
+    -img.naturalHeight / 2,
+    img.naturalWidth,
+    img.naturalHeight,
+  );
+  return canvasToFile(canvas, file.name);
+}
+
 async function detectWithFallback(
   file: File,
   trace: TraceFn,
@@ -227,7 +329,8 @@ async function detectWithFallback(
     status: "info",
     detail: "开始动态加载 html5-qrcode",
   });
-  const { Html5Qrcode } = await import("html5-qrcode");
+  const { Html5Qrcode, Html5QrcodeSupportedFormats } =
+    await import("html5-qrcode");
   trace({
     step: "Fallback 引擎",
     status: "success",
@@ -258,19 +361,107 @@ async function detectWithFallback(
   });
 
   try {
-    const scanner = new Html5Qrcode(tempId);
+    const variants: ImageVariant[] = [{ label: "标准图", file: correctedFile }];
+
+    try {
+      variants.push({
+        label: "加白边图",
+        file: await createPaddedVariant(correctedFile, 0.16),
+      });
+      trace({
+        step: "Fallback 预处理",
+        status: "info",
+        detail: "已生成加白边变体",
+      });
+    } catch (error) {
+      trace({
+        step: "Fallback 预处理",
+        status: "warning",
+        detail: `加白边失败: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+
+    try {
+      variants.push({
+        label: "高对比图",
+        file: await createEnhancedVariant(correctedFile),
+      });
+      trace({
+        step: "Fallback 预处理",
+        status: "info",
+        detail: "已生成高对比变体",
+      });
+    } catch (error) {
+      trace({
+        step: "Fallback 预处理",
+        status: "warning",
+        detail: `高对比处理失败: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+
+    try {
+      variants.push({
+        label: "旋转90度图",
+        file: await createRotatedVariant(correctedFile, 90),
+      });
+      variants.push({
+        label: "旋转270度图",
+        file: await createRotatedVariant(correctedFile, 270),
+      });
+      trace({
+        step: "Fallback 预处理",
+        status: "info",
+        detail: "已生成旋转变体",
+      });
+    } catch (error) {
+      trace({
+        step: "Fallback 预处理",
+        status: "warning",
+        detail: `旋转处理失败: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+
+    for (const variant of variants) {
+      const scanner = new Html5Qrcode(tempId, {
+        verbose: false,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+        ],
+      });
+
+      try {
+        trace({
+          step: "Fallback 尝试",
+          status: "info",
+          detail: `${variant.label} | ${variant.file.type || "unknown"} | ${Math.round(variant.file.size / 1024)}KB`,
+        });
+        const decodedText = await scanner.scanFile(variant.file, false);
+        trace({
+          step: "Fallback 尝试",
+          status: "success",
+          detail: `${variant.label} 识别成功`,
+        });
+        return { text: decodedText, format: "qr_code" };
+      } catch (error) {
+        trace({
+          step: "Fallback 尝试",
+          status: "warning",
+          detail: `${variant.label} 失败: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    }
+
     trace({
       step: "Fallback 引擎",
-      status: "info",
-      detail: `开始 scanFile，输入 ${correctedFile.type || "unknown"} | ${Math.round(correctedFile.size / 1024)}KB`,
+      status: "error",
+      detail: "所有预处理变体都未被 html5-qrcode 识别",
     });
-    const decodedText = await scanner.scanFile(correctedFile, false);
-    trace({
-      step: "Fallback 引擎",
-      status: "success",
-      detail: "html5-qrcode 识别成功",
-    });
-    return { text: decodedText, format: "qr_code" };
+    return null;
   } catch (error) {
     trace({
       step: "Fallback 引擎",
