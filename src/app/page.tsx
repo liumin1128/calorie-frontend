@@ -30,6 +30,7 @@ import ProfileSummaryCard from "@/components/ProfileSummaryCard";
 import CalorieStatsGrid from "@/components/CalorieStatsGrid";
 import CalorieRecordList from "@/components/CalorieRecordList";
 import DailyCalorieCalendar from "@/components/DailyCalorieCalendar";
+import WaterIntakeCard from "@/components/WaterIntakeCard";
 import CalorieRing from "@/components/CalorieRing";
 import FadeUp from "@/components/FadeUp";
 
@@ -175,12 +176,22 @@ export default function Home() {
           {/* 右栏 */}
           <Grid size={{ xs: 12, md: 4 }}>
             <FadeUp delay="0.2s">
-              <ProfileSummaryCard
-                profile={profile}
-                profileLoading={profileLoading}
-                onOpenProfile={() => tracker.setProfileOpen(true)}
-              />
-              <DailyCalorieCalendar />
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 3,
+                  height: "auto",
+                }}
+              >
+                <ProfileSummaryCard
+                  profile={profile}
+                  profileLoading={profileLoading}
+                  onOpenProfile={() => tracker.setProfileOpen(true)}
+                />
+                <WaterIntakeCard />
+                <DailyCalorieCalendar />
+              </Box>
             </FadeUp>
           </Grid>
         </Grid>

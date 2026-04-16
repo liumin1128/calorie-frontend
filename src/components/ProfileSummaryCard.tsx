@@ -40,10 +40,7 @@ export default function ProfileSummaryCard({
     : 0;
 
   return (
-    <Card
-      elevation={0}
-      sx={{ mb: 2.5, border: "1px solid", borderColor: "divider" }}
-    >
+    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
       <CardContent sx={{ p: 2.5 }}>
         {profileLoading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
