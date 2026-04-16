@@ -29,10 +29,11 @@ import type {
   CreateCalorieEntryDto,
 } from "@/types/calorie";
 import { getDefaultMealType, mealTypeLabels } from "@/types/calorie";
+import { analyzeImageNutrition } from "@/services/imageAnalysisService";
 import {
-  validateImageFile,
-  analyzeImageNutrition,
-} from "@/services/imageAnalysisService";
+  AI_IMAGE_ACCEPT,
+  prepareImageForAiUpload,
+} from "@/services/imagePreprocessService";
 
 /* ───── 类型 ───── */
 
@@ -471,20 +472,16 @@ export default function AiAnalysisPreview({
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const validationError = validateImageFile(file);
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
-
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(file));
+      setAnalyzing(true);
       setError(null);
       setFoods([]);
 
-      setAnalyzing(true);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       try {
-        const res = await analyzeImageNutrition(token, file);
+        const prepared = await prepareImageForAiUpload(file);
+        setPreviewUrl(prepared.previewUrl);
+
+        const res = await analyzeImageNutrition(token, prepared.file);
         if (!res.foods?.length) {
           setError("未识别到食物，请重试或手动添加");
           return;
@@ -565,7 +562,7 @@ export default function AiAnalysisPreview({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={AI_IMAGE_ACCEPT}
         onChange={handleFileSelect}
         hidden
       />
@@ -696,7 +693,7 @@ export default function AiAnalysisPreview({
               sx={{ fontSize: 36, color: "primary.light", mb: 1.5 }}
             />
             <Typography variant="body2" color="text.secondary">
-              正在识别食物...
+              {previewUrl ? "正在识别食物..." : "正在优化图片并准备分析..."}
             </Typography>
           </Box>
         )}

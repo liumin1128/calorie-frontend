@@ -17,10 +17,11 @@ import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import type { ImageNutritionFood } from "@/types/calorie";
+import { analyzeImageNutrition } from "@/services/imageAnalysisService";
 import {
-  validateImageFile,
-  analyzeImageNutrition,
-} from "@/services/imageAnalysisService";
+  AI_IMAGE_ACCEPT,
+  prepareImageForAiUpload,
+} from "@/services/imagePreprocessService";
 
 interface AnalyzedResult {
   title: string;
@@ -44,6 +45,7 @@ const ImageUploadAnalyzer = forwardRef<ImageUploadAnalyzerRef, Props>(
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
+    const [preparing, setPreparing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [foods, setFoods] = useState<ImageNutritionFood[] | null>(null);
 
@@ -59,23 +61,29 @@ const ImageUploadAnalyzer = forwardRef<ImageUploadAnalyzerRef, Props>(
     }, [previewUrl]);
 
     const handleFileSelect = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
+      async (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0];
         if (!selected) return;
-
-        const validationError = validateImageFile(selected);
-        if (validationError) {
-          setError(validationError);
-          return;
-        }
 
         // 清理旧预览
         if (previewUrl) URL.revokeObjectURL(previewUrl);
 
-        setFile(selected);
-        setPreviewUrl(URL.createObjectURL(selected));
         setError(null);
         setFoods(null);
+        setPreparing(true);
+
+        try {
+          const prepared = await prepareImageForAiUpload(selected);
+          setFile(prepared.file);
+          setPreviewUrl(prepared.previewUrl);
+        } catch (err) {
+          setFile(null);
+          setPreviewUrl(null);
+          setError(err instanceof Error ? err.message : "图片处理失败，请重试");
+          if (inputRef.current) inputRef.current.value = "";
+        } finally {
+          setPreparing(false);
+        }
       },
       [previewUrl],
     );
@@ -122,7 +130,7 @@ const ImageUploadAnalyzer = forwardRef<ImageUploadAnalyzerRef, Props>(
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept={AI_IMAGE_ACCEPT}
           onChange={handleFileSelect}
           hidden
         />
@@ -130,7 +138,7 @@ const ImageUploadAnalyzer = forwardRef<ImageUploadAnalyzerRef, Props>(
         {!previewUrl ? (
           /* 上传占位区域 */
           <Box
-            onClick={() => inputRef.current?.click()}
+            onClick={() => !preparing && inputRef.current?.click()}
             sx={{
               border: "2px dashed",
               borderColor: "divider",
@@ -142,15 +150,22 @@ const ImageUploadAnalyzer = forwardRef<ImageUploadAnalyzerRef, Props>(
               gap: 1,
               cursor: "pointer",
               transition: "border-color 0.2s, background 0.2s",
+              opacity: preparing ? 0.7 : 1,
               "&:hover": {
                 borderColor: "primary.light",
                 bgcolor: "rgba(61,107,79,0.04)",
               },
             }}
           >
-            <CameraAltIcon sx={{ fontSize: 32, color: "text.secondary" }} />
+            {preparing ? (
+              <CircularProgress size={28} sx={{ color: "primary.main" }} />
+            ) : (
+              <CameraAltIcon sx={{ fontSize: 32, color: "text.secondary" }} />
+            )}
             <Typography variant="body2" color="text.secondary">
-              点击上传食物图片，AI 自动识别营养成分
+              {preparing
+                ? "正在优化图片，请稍候..."
+                : "点击上传食物图片，AI 自动识别营养成分"}
             </Typography>
           </Box>
         ) : (
@@ -196,7 +211,7 @@ const ImageUploadAnalyzer = forwardRef<ImageUploadAnalyzerRef, Props>(
                     <AutoFixHighIcon />
                   )
                 }
-                disabled={analyzing}
+                disabled={analyzing || preparing}
                 onClick={handleAnalyze}
                 sx={{
                   position: "absolute",
