@@ -25,15 +25,21 @@ interface Props {
   onClose: () => void;
 }
 
+type NumericFieldValue = number | "";
+
 interface FormState {
   nickname: string;
   gender: Gender;
   birthday: string;
   signature: string;
-  height: number;
-  weight: number;
-  targetWeight: number;
+  height: NumericFieldValue;
+  weight: NumericFieldValue;
+  targetWeight: NumericFieldValue;
   healthConditions: string[];
+}
+
+function parseNumericFieldValue(value: string): NumericFieldValue {
+  return value === "" ? "" : Number(value);
 }
 
 function buildInitialForm(
@@ -77,6 +83,9 @@ export default function ProfileDialog({ open, onClose }: Props) {
     setError(null);
 
     try {
+      const height = form.height === "" ? 0 : form.height;
+      const weight = form.weight === "" ? 0 : form.weight;
+      const targetWeight = form.targetWeight === "" ? 0 : form.targetWeight;
       const promises: Promise<unknown>[] = [];
 
       // 基础资料
@@ -86,29 +95,29 @@ export default function ProfileDialog({ open, onClose }: Props) {
           gender: form.gender,
           birthday: form.birthday || undefined,
           signature: form.signature || undefined,
-          targetWeight: form.targetWeight > 0 ? form.targetWeight : undefined,
+          targetWeight: targetWeight > 0 ? targetWeight : undefined,
           healthConditions: form.healthConditions,
         }),
       );
 
       // 身高：值变化时追加记录
       const origHeight = profile?.latestHeight?.value;
-      if (form.height > 0 && form.height !== origHeight) {
+      if (height > 0 && height !== origHeight) {
         promises.push(
           dynamicDataService.create(token, {
             category: "height",
-            value: form.height,
+            value: height,
           }),
         );
       }
 
       // 体重：值变化时追加记录
       const origWeight = profile?.latestWeight?.value;
-      if (form.weight > 0 && form.weight !== origWeight) {
+      if (weight > 0 && weight !== origWeight) {
         promises.push(
           dynamicDataService.create(token, {
             category: "weight",
-            value: form.weight,
+            value: weight,
           }),
         );
       }
@@ -180,7 +189,10 @@ export default function ProfileDialog({ open, onClose }: Props) {
             type="number"
             value={form.height}
             onChange={(e) =>
-              setForm({ ...form, height: Number(e.target.value) })
+              setForm({
+                ...form,
+                height: parseNumericFieldValue(e.target.value),
+              })
             }
           />
 
@@ -189,7 +201,10 @@ export default function ProfileDialog({ open, onClose }: Props) {
             type="number"
             value={form.weight}
             onChange={(e) =>
-              setForm({ ...form, weight: Number(e.target.value) })
+              setForm({
+                ...form,
+                weight: parseNumericFieldValue(e.target.value),
+              })
             }
             slotProps={{ htmlInput: { step: 0.1 } }}
           />
@@ -197,9 +212,12 @@ export default function ProfileDialog({ open, onClose }: Props) {
           <TextField
             label="目标体重 (kg)"
             type="number"
-            value={form.targetWeight || ""}
+            value={form.targetWeight}
             onChange={(e) =>
-              setForm({ ...form, targetWeight: Number(e.target.value) })
+              setForm({
+                ...form,
+                targetWeight: parseNumericFieldValue(e.target.value),
+              })
             }
             slotProps={{ htmlInput: { step: 0.1, min: 30, max: 300 } }}
           />
