@@ -6,6 +6,7 @@ import Image from "next/image";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
@@ -43,7 +44,6 @@ export default function LoginPage() {
 
   /* shared input sx */
   const inputSx = {
-    mb: 3.5,
     "& .MuiInput-underline:before": { borderBottomColor: "divider" },
     "& .MuiInput-underline:after": { borderBottomColor: "primary.main" },
     "& .MuiInputLabel-root": { color: "text.secondary", fontSize: 14 },
@@ -141,7 +141,7 @@ export default function LoginPage() {
           py: { xs: 4, sm: 5 },
         }}
       >
-        <Box
+        <Stack
           sx={{
             maxWidth: 480,
             width: "100%",
@@ -149,101 +149,102 @@ export default function LoginPage() {
             overflowY: "auto",
             WebkitOverflowScrolling: "touch",
           }}
+          spacing={3.5}
         >
           {/* Brand */}
-          <Typography
-            sx={{
-              fontSize: { xs: 32, md: 38 },
-              fontFamily: '"Instrument Serif", serif',
-              color: "primary.main",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              mb: 0.5,
-            }}
-          >
-            CaloTrack
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 15,
-              color: "text.secondary",
-              mb: 5,
-              fontWeight: 300,
-            }}
-          >
-            记录每一口，掌控每一天
-          </Typography>
+          <Stack spacing={0.5}>
+            <Typography
+              sx={{
+                fontSize: { xs: 32, md: 38 },
+                fontFamily: '"Instrument Serif", serif',
+                color: "primary.main",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.1,
+              }}
+            >
+              CaloTrack
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 15,
+                color: "text.secondary",
+                fontWeight: 300,
+              }}
+            >
+              记录每一口，掌控每一天
+            </Typography>
+          </Stack>
 
           {/* Error */}
           {error && (
-            <Alert
-              severity="error"
-              sx={{ mb: 3, borderRadius: "10px", fontSize: 14 }}
-            >
+            <Alert severity="error" sx={{ borderRadius: "10px", fontSize: 14 }}>
               {error}
             </Alert>
           )}
 
           {/* Form */}
           <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              label="邮箱"
-              type="email"
-              fullWidth
-              required
-              variant="standard"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              sx={inputSx}
-            />
+            <Stack spacing={4.5}>
+              <Stack spacing={3.5}>
+                <TextField
+                  label="邮箱"
+                  type="email"
+                  fullWidth
+                  required
+                  variant="standard"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  sx={inputSx}
+                />
 
-            <TextField
-              label="密码"
-              type={showPwd ? "text" : "password"}
-              fullWidth
-              required
-              variant="standard"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowPwd((v) => !v)}
-                        edge="end"
-                        aria-label={showPwd ? "隐藏密码" : "显示密码"}
-                        sx={{ color: "text.secondary" }}
-                      >
-                        {showPwd ? (
-                          <VisibilityOff fontSize="small" />
-                        ) : (
-                          <Visibility fontSize="small" />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              sx={{ ...inputSx, mb: 4.5 }}
-            />
+                <TextField
+                  label="密码"
+                  type={showPwd ? "text" : "password"}
+                  fullWidth
+                  required
+                  variant="standard"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => setShowPwd((v) => !v)}
+                            edge="end"
+                            aria-label={showPwd ? "隐藏密码" : "显示密码"}
+                            sx={{ color: "text.secondary" }}
+                          >
+                            {showPwd ? (
+                              <VisibilityOff fontSize="small" />
+                            ) : (
+                              <Visibility fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                  sx={inputSx}
+                />
+              </Stack>
 
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={loading}
-              sx={{ py: 1.5, fontSize: 15 }}
-            >
-              {loading ? "登录中..." : "登录"}
-            </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                disabled={loading}
+                sx={{ py: 1.5, fontSize: 15 }}
+              >
+                {loading ? "登录中..." : "登录"}
+              </Button>
+            </Stack>
           </Box>
 
           {/* Divider */}
           <Divider
             sx={{
-              my: 3.5,
               fontSize: 12,
               color: "text.secondary",
               "&::before, &::after": { borderColor: "divider" },
@@ -301,7 +302,6 @@ export default function LoginPage() {
           <Typography
             sx={{
               textAlign: "center",
-              mt: 2.5,
               fontSize: 12,
               color: "text.secondary",
               opacity: 0.7,
@@ -314,7 +314,6 @@ export default function LoginPage() {
           <Typography
             sx={{
               textAlign: "center",
-              mt: 3.5,
               fontSize: 14,
               color: "text.secondary",
             }}
@@ -334,7 +333,7 @@ export default function LoginPage() {
               立即注册
             </Typography>
           </Typography>
-        </Box>
+        </Stack>
       </Box>
     </Box>
   );

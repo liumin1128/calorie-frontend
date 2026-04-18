@@ -6,6 +6,7 @@ import Image from "next/image";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
@@ -52,7 +53,6 @@ export default function RegisterPage() {
   };
 
   const inputSx = {
-    mb: 3,
     "& .MuiInput-underline:before": { borderBottomColor: "divider" },
     "& .MuiInput-underline:after": { borderBottomColor: "primary.main" },
     "& .MuiInputLabel-root": { color: "text.secondary", fontSize: 14 },
@@ -149,7 +149,7 @@ export default function RegisterPage() {
           py: { xs: 4, sm: 5 },
         }}
       >
-        <Box
+        <Stack
           sx={{
             maxWidth: 480,
             width: "100%",
@@ -157,123 +157,124 @@ export default function RegisterPage() {
             overflowY: "auto",
             WebkitOverflowScrolling: "touch",
           }}
+          spacing={3.5}
         >
           {/* Brand */}
-          <Typography
-            sx={{
-              fontSize: { xs: 32, md: 38 },
-              fontFamily: '"Instrument Serif", serif',
-              color: "primary.main",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              mb: 0.5,
-            }}
-          >
-            CaloTrack
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 15,
-              color: "text.secondary",
-              mb: 4,
-              fontWeight: 300,
-            }}
-          >
-            创建账户，开始健康之旅
-          </Typography>
+          <Stack spacing={0.5}>
+            <Typography
+              sx={{
+                fontSize: { xs: 32, md: 38 },
+                fontFamily: '"Instrument Serif", serif',
+                color: "primary.main",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.1,
+              }}
+            >
+              CaloTrack
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 15,
+                color: "text.secondary",
+                fontWeight: 300,
+              }}
+            >
+              创建账户，开始健康之旅
+            </Typography>
+          </Stack>
 
           {/* Error */}
           {error && (
-            <Alert
-              severity="error"
-              sx={{ mb: 3, borderRadius: "10px", fontSize: 14 }}
-            >
+            <Alert severity="error" sx={{ borderRadius: "10px", fontSize: 14 }}>
               {error}
             </Alert>
           )}
 
           {/* Form */}
           <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              label="邮箱"
-              type="email"
-              fullWidth
-              required
-              variant="standard"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              sx={inputSx}
-            />
+            <Stack spacing={4}>
+              <Stack spacing={3}>
+                <TextField
+                  label="邮箱"
+                  type="email"
+                  fullWidth
+                  required
+                  variant="standard"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  sx={inputSx}
+                />
 
-            <TextField
-              label="昵称（可选）"
-              fullWidth
-              variant="standard"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              sx={inputSx}
-            />
+                <TextField
+                  label="昵称（可选）"
+                  fullWidth
+                  variant="standard"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  sx={inputSx}
+                />
 
-            <TextField
-              label="密码"
-              type={showPwd ? "text" : "password"}
-              fullWidth
-              required
-              variant="standard"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              helperText="至少6位"
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowPwd((v) => !v)}
-                        edge="end"
-                        aria-label={showPwd ? "隐藏密码" : "显示密码"}
-                        sx={{ color: "text.secondary" }}
-                      >
-                        {showPwd ? (
-                          <VisibilityOff fontSize="small" />
-                        ) : (
-                          <Visibility fontSize="small" />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              sx={inputSx}
-            />
+                <TextField
+                  label="密码"
+                  type={showPwd ? "text" : "password"}
+                  fullWidth
+                  required
+                  variant="standard"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  helperText="至少6位"
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => setShowPwd((v) => !v)}
+                            edge="end"
+                            aria-label={showPwd ? "隐藏密码" : "显示密码"}
+                            sx={{ color: "text.secondary" }}
+                          >
+                            {showPwd ? (
+                              <VisibilityOff fontSize="small" />
+                            ) : (
+                              <Visibility fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                  sx={inputSx}
+                />
 
-            <TextField
-              label="确认密码"
-              type={showPwd ? "text" : "password"}
-              fullWidth
-              required
-              variant="standard"
-              value={confirmPwd}
-              onChange={(e) => setConfirmPwd(e.target.value)}
-              sx={{ ...inputSx, mb: 4 }}
-            />
+                <TextField
+                  label="确认密码"
+                  type={showPwd ? "text" : "password"}
+                  fullWidth
+                  required
+                  variant="standard"
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  sx={inputSx}
+                />
+              </Stack>
 
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={loading}
-              sx={{ py: 1.5, fontSize: 15 }}
-            >
-              {loading ? "注册中..." : "创建账户"}
-            </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                disabled={loading}
+                sx={{ py: 1.5, fontSize: 15 }}
+              >
+                {loading ? "注册中..." : "创建账户"}
+              </Button>
+            </Stack>
           </Box>
 
           {/* Login link */}
           <Typography
             sx={{
               textAlign: "center",
-              mt: 3.5,
               fontSize: 14,
               color: "text.secondary",
             }}
@@ -293,7 +294,7 @@ export default function RegisterPage() {
               去登录
             </Typography>
           </Typography>
-        </Box>
+        </Stack>
       </Box>
     </Box>
   );

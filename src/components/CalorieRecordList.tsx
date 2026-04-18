@@ -205,67 +205,72 @@ function TypeCard({
   return (
     <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
       <CardContent sx={{ p: 2.5 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 1.5,
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1}>
-            {isIntake ? (
-              <RestaurantIcon color="primary" fontSize="small" />
-            ) : (
-              <FitnessCenterIcon sx={{ color: "warning.main", fontSize: 20 }} />
-            )}
-            <Typography variant="subtitle1" fontWeight="bold">
-              {isIntake ? "饮食记录" : "运动记录"}
-            </Typography>
-          </Stack>
-          {isIntake && onSelectEntryType ? (
-            <IntakeActions onSelect={onSelectEntryType} />
-          ) : (
-            <Button size="small" startIcon={<AddIcon />} onClick={onAdd}>
-              新增
-            </Button>
-          )}
-        </Box>
-
-        {/* 小计 */}
-        {entries.length > 0 && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ mb: 1, display: "block" }}
+        <Stack spacing={1.5}>
+          {/* Header */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
           >
-            {isIntake ? "摄入" : "消耗"} {Math.round(total)} kcal
-          </Typography>
-        )}
+            <Stack direction="row" alignItems="center" spacing={1}>
+              {isIntake ? (
+                <RestaurantIcon color="primary" fontSize="small" />
+              ) : (
+                <FitnessCenterIcon
+                  sx={{ color: "warning.main", fontSize: 20 }}
+                />
+              )}
+              <Typography variant="subtitle1" fontWeight="bold">
+                {isIntake ? "饮食记录" : "运动记录"}
+              </Typography>
+            </Stack>
+            {isIntake && onSelectEntryType ? (
+              <IntakeActions onSelect={onSelectEntryType} />
+            ) : (
+              <Button size="small" startIcon={<AddIcon />} onClick={onAdd}>
+                新增
+              </Button>
+            )}
+          </Box>
 
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={20} />
-          </Box>
-        ) : entries.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography variant="body2" color="text.secondary">
-              {isIntake ? "暂无饮食记录" : "暂无运动记录"}
-            </Typography>
-          </Box>
-        ) : (
-          <Stack divider={<Divider />}>
-            {entries.map((entry) => (
-              <RecordRow
-                key={entry._id}
-                entry={entry}
-                onEdit={onEdit}
-                onDelete={onDelete}
-              />
-            ))}
-          </Stack>
-        )}
+          {entries.length > 0 ? (
+            <Stack spacing={1}>
+              {/* 小计 */}
+              <Typography variant="caption" color="text.secondary">
+                {isIntake ? "摄入" : "消耗"} {Math.round(total)} kcal
+              </Typography>
+
+              {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                  <CircularProgress size={20} />
+                </Box>
+              ) : (
+                <Stack divider={<Divider />}>
+                  {entries.map((entry) => (
+                    <RecordRow
+                      key={entry._id}
+                      entry={entry}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          ) : loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress size={20} />
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <Typography variant="body2" color="text.secondary">
+                {isIntake ? "暂无饮食记录" : "暂无运动记录"}
+              </Typography>
+            </Box>
+          )}
+        </Stack>
       </CardContent>
     </Card>
   );
