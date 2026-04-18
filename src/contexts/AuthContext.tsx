@@ -36,8 +36,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const TOKEN_KEY = "calorie_token";
 const USER_KEY = "calorie_user";
+const AUTH_COOKIE_DAYS = 30;
 
-function setCookie(name: string, value: string, days = 7) {
+function setCookie(name: string, value: string, days = AUTH_COOKIE_DAYS) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Lax`;
 }
