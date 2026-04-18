@@ -14,7 +14,7 @@ import { calculateBMR } from "@/types/calorie";
 import { calculateAge } from "@/types/user";
 import type { UserFullProfile } from "@/types/user";
 
-const PROFILE_CARD_MIN_HEIGHT = 220;
+const PROFILE_CARD_MIN_HEIGHT = 200;
 
 interface ProfileSummaryCardProps {
   profile: UserFullProfile | null;
