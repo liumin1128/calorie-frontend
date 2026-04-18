@@ -25,7 +25,7 @@ export function setWaterAmount(token: string, dto: SetWaterDto) {
   });
 }
 
-export async function getTodayWaterAmount(
+export async function getWaterAmountByDate(
   token: string,
   date = dayjs().format("YYYY-MM-DD"),
 ) {

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import WaterIntakeCardView from "@/components/WaterIntakeCardView";
+import { useCalorieStore } from "@/stores/calorieStore";
 import {
   useWaterIntakeStore,
   WATER_CUP_VOLUME_ML,
@@ -12,17 +13,18 @@ const DEFAULT_MAX_CUPS = 10;
 
 export default function WaterIntakeCard() {
   const { token } = useAuth();
+  const selectedDate = useCalorieStore((state) => state.selectedDate);
   const amount = useWaterIntakeStore((state) => state.amount);
   const loading = useWaterIntakeStore((state) => state.loading);
   const submitting = useWaterIntakeStore((state) => state.submitting);
   const error = useWaterIntakeStore((state) => state.error);
-  const fetchToday = useWaterIntakeStore((state) => state.fetchToday);
+  const fetchByDate = useWaterIntakeStore((state) => state.fetchByDate);
   const setAmountByCup = useWaterIntakeStore((state) => state.setAmountByCup);
 
   useEffect(() => {
     if (!token) return;
-    void fetchToday(token);
-  }, [fetchToday, token]);
+    void fetchByDate(token, selectedDate);
+  }, [fetchByDate, selectedDate, token]);
 
   if (!token) return null;
 
@@ -34,8 +36,10 @@ export default function WaterIntakeCard() {
       error={error}
       cupVolumeMl={WATER_CUP_VOLUME_ML}
       maxCups={DEFAULT_MAX_CUPS}
-      onRetry={() => void fetchToday(token)}
-      onSelectCup={(cupCount) => void setAmountByCup(token, cupCount)}
+      onRetry={() => void fetchByDate(token, selectedDate)}
+      onSelectCup={(cupCount) =>
+        void setAmountByCup(token, selectedDate, cupCount)
+      }
     />
   );
 }

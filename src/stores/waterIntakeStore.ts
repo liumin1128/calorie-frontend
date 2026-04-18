@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import dayjs from "dayjs";
-import { getTodayWaterAmount, setWaterAmount } from "@/services/waterService";
+import { getWaterAmountByDate, setWaterAmount } from "@/services/waterService";
 
 export const WATER_CUP_VOLUME_ML = 250;
 
@@ -10,9 +10,13 @@ interface WaterIntakeState {
   loading: boolean;
   submitting: boolean;
   error: string | null;
-  fetchToday: (token: string) => Promise<void>;
-  setAmount: (token: string, amount: number) => Promise<void>;
-  setAmountByCup: (token: string, cupCount: number) => Promise<void>;
+  fetchByDate: (token: string, date: string) => Promise<void>;
+  setAmount: (token: string, date: string, amount: number) => Promise<void>;
+  setAmountByCup: (
+    token: string,
+    date: string,
+    cupCount: number,
+  ) => Promise<void>;
   clearError: () => void;
 }
 
@@ -27,44 +31,54 @@ export const useWaterIntakeStore = create<WaterIntakeState>()((set, get) => ({
   submitting: false,
   error: null,
 
-  fetchToday: async (token: string) => {
-    const date = getTodayKey();
+  fetchByDate: async (token: string, date: string) => {
     set({ loading: true, error: null, date });
     try {
-      const amount = await getTodayWaterAmount(token, date);
+      const amount = await getWaterAmountByDate(token, date);
+      if (get().date !== date) return;
       set({ amount, date });
     } catch (error) {
+      if (get().date !== date) return;
       set({
         error: error instanceof Error ? error.message : "获取今日饮水失败",
       });
     } finally {
-      set({ loading: false });
+      if (get().date === date) {
+        set({ loading: false });
+      }
     }
   },
 
-  setAmount: async (token: string, amount: number) => {
+  setAmount: async (token: string, date: string, amount: number) => {
     if (get().loading || get().submitting) return;
 
-    const date = getTodayKey();
     const previousAmount = get().amount;
     set({ amount, date, error: null, submitting: true });
 
     try {
       const response = await setWaterAmount(token, { date, amount });
+      if (get().date !== date) return;
       set({ amount: response.amount, date: response.date });
     } catch (error) {
+      if (get().date !== date) return;
       set({
         amount: previousAmount,
         error: error instanceof Error ? error.message : "设置今日饮水失败",
       });
     } finally {
-      set({ submitting: false });
+      if (get().date === date) {
+        set({ submitting: false });
+      }
     }
   },
 
-  setAmountByCup: async (token: string, cupCount: number) => {
+  setAmountByCup: async (token: string, date: string, cupCount: number) => {
     const normalizedCupCount = Math.max(0, Math.floor(cupCount));
-    await get().setAmount(token, normalizedCupCount * WATER_CUP_VOLUME_ML);
+    await get().setAmount(
+      token,
+      date,
+      normalizedCupCount * WATER_CUP_VOLUME_ML,
+    );
   },
 
   clearError: () => set({ error: null }),
