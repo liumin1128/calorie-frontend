@@ -5,12 +5,14 @@ import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import CircularProgress from "@mui/material/CircularProgress";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import ReplayIcon from "@mui/icons-material/Replay";
 import WaterCup from "@/components/WaterCup";
+
+const WATER_CARD_MIN_HEIGHT = 200;
 
 interface WaterIntakeCardViewProps {
   amount: number;
@@ -40,11 +42,15 @@ export default function WaterIntakeCardView({
     fullCupCount + (remainder > 0 ? 1 : 0),
   );
   const cups = Array.from({ length: visibleCupCount }, (_, index) => index + 1);
+  const skeletonCups = Array.from({ length: maxCups }, (_, index) => index);
 
   return (
-    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
+    <Card
+      elevation={0}
+      sx={{ border: "1px solid", borderColor: "divider", height: "100%" }}
+    >
       <CardContent sx={{ p: 2.5 }}>
-        <Stack spacing={3}>
+        <Stack spacing={3} sx={{ minHeight: WATER_CARD_MIN_HEIGHT }}>
           <Box>
             <Stack
               direction="row"
@@ -59,12 +65,25 @@ export default function WaterIntakeCardView({
                 </Typography>
               </Stack>
               <Stack direction="row" alignItems="baseline" spacing={0.75}>
-                <Typography variant="h5" fontWeight={800} color="primary.main">
-                  {amount}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  ml
-                </Typography>
+                {loading ? (
+                  <>
+                    <Skeleton variant="text" width={48} height={36} />
+                    <Skeleton variant="text" width={20} height={20} />
+                  </>
+                ) : (
+                  <>
+                    <Typography
+                      variant="h5"
+                      fontWeight={800}
+                      color="primary.main"
+                    >
+                      {amount}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      ml
+                    </Typography>
+                  </>
+                )}
               </Stack>
             </Stack>
           </Box>
@@ -89,9 +108,38 @@ export default function WaterIntakeCardView({
           )}
 
           {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-              <CircularProgress size={26} />
-            </Box>
+            <Stack spacing={3} sx={{ flex: 1 }}>
+              <Stack
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexDirection="row"
+                gap="8px"
+                flexWrap="wrap"
+              >
+                <Skeleton variant="text" width={84} height={18} />
+                <Skeleton variant="text" width={96} height={18} />
+                <Skeleton variant="text" width={80} height={18} />
+              </Stack>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                  gap: 2,
+                  flex: 1,
+                }}
+              >
+                {skeletonCups.map((cupIndex) => (
+                  <Box
+                    key={cupIndex}
+                    sx={{ display: "flex", justifyContent: "center" }}
+                  >
+                    <Skeleton variant="rounded" width={36} height={44} />
+                  </Box>
+                ))}
+              </Box>
+            </Stack>
           ) : (
             <Stack spacing={3}>
               <Stack
