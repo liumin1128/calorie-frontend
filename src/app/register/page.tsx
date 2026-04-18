@@ -69,7 +69,7 @@ export default function RegisterPage() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         flexDirection: { xs: "column", sm: "row" },
         bgcolor: "background.default",
@@ -143,9 +143,10 @@ export default function RegisterPage() {
           width: { xs: "100%", sm: 480 },
           maxWidth: 480,
           display: "flex",
-          alignItems: "center",
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "center",
           p: { xs: 3, sm: 5 },
+          py: { xs: 4, sm: 5 },
         }}
       >
         <Box
@@ -153,6 +154,8 @@ export default function RegisterPage() {
             maxWidth: 480,
             width: "100%",
             animation: `${fadeUp} 0.7s ease-out`,
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {/* Brand */}

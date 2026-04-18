@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
@@ -222,8 +224,17 @@ export default function CreateRecordDialog({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
+      scroll="paper"
       TransitionComponent={SlideUp}
-      PaperProps={{ sx: { borderRadius: 1, overflow: "hidden" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: 1,
+          overflow: "hidden",
+          maxHeight: "calc(100dvh - 32px)",
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
     >
       <Box sx={{ px: 3, pt: 2.5, pb: 0.5 }}>
         <Typography variant="h6" fontWeight={700} sx={{ fontSize: 18 }}>
@@ -235,13 +246,16 @@ export default function CreateRecordDialog({
         </Typography>
       </Box>
 
-      <Box
+      <DialogContent
+        dividers
         sx={{
           px: 3,
           py: 2,
           display: "flex",
           flexDirection: "column",
           gap: 2.5,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {/* AI 图片识别 */}
@@ -527,14 +541,17 @@ export default function CreateRecordDialog({
             {error}
           </Typography>
         )}
-      </Box>
+      </DialogContent>
 
       {/* 底部操作 */}
-      <Stack
-        direction="row"
-        spacing={1.5}
-        sx={{ px: 3, pb: 2.5, pt: 1 }}
-        justifyContent="flex-end"
+      <DialogActions
+        sx={{
+          px: 3,
+          pb: 2.5,
+          pt: 1,
+          justifyContent: "flex-end",
+          flexShrink: 0,
+        }}
       >
         <Button
           onClick={handleClose}
@@ -557,7 +574,7 @@ export default function CreateRecordDialog({
         >
           {submitting ? "提交中..." : isEdit ? "保存修改" : "确认添加"}
         </Button>
-      </Stack>
+      </DialogActions>
     </Dialog>
   );
 }

@@ -124,9 +124,26 @@ export default function ProfileDialog({ open, onClose }: Props) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      scroll="paper"
+      PaperProps={{
+        sx: {
+          maxHeight: "calc(100dvh - 32px)",
+        },
+      }}
+    >
       <DialogTitle>个人信息设置</DialogTitle>
-      <DialogContent>
+      <DialogContent
+        dividers
+        sx={{
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: 1 }}>
           {error && (
             <Alert severity="error" onClose={() => setError(null)}>
