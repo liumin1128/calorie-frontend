@@ -53,6 +53,12 @@ interface Props {
   autoTriggerImage?: boolean;
 }
 
+type NumericFieldValue = number | "";
+
+function parseNumericFieldValue(value: string): NumericFieldValue {
+  return value === "" ? "" : Number(value);
+}
+
 function getToday() {
   return dayjs().format("YYYY-MM-DD");
 }
@@ -77,7 +83,9 @@ export default function CreateRecordDialog({
   // 直接从 props 初始化 state，确保 Dialog 重新挂载时首帧即正确
   const [type, setType] = useState<CalorieType>(initialData?.type ?? "intake");
   const [title, setTitle] = useState(initialData?.title ?? "");
-  const [calories, setCalories] = useState<number>(initialData?.calories ?? 0);
+  const [calories, setCalories] = useState<NumericFieldValue>(
+    initialData?.calories ?? 0,
+  );
   const [date, setDate] = useState(() =>
     initialData
       ? dayjs(initialData.entryDate).format("YYYY-MM-DD")
@@ -172,7 +180,8 @@ export default function CreateRecordDialog({
   }, [open, autoTriggerImage, initialData]);
 
   const handleSubmit = async () => {
-    if (!title || calories <= 0) return;
+    const normalizedCalories = calories === "" ? 0 : calories;
+    if (!title || normalizedCalories <= 0) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -187,7 +196,7 @@ export default function CreateRecordDialog({
       await onSubmit({
         type: effectiveType,
         title,
-        calories,
+        calories: normalizedCalories,
         entryDate: new Date(`${date}T${time}`).toISOString(),
         ...(effectiveType === "intake" ? { mealType } : {}),
         ...(effectiveType === "intake" && hasNutrition ? { nutrition } : {}),
@@ -331,8 +340,8 @@ export default function CreateRecordDialog({
               : "消耗卡路里 (kcal)"
           }
           type="number"
-          value={calories || ""}
-          onChange={(e) => setCalories(Number(e.target.value))}
+          value={calories}
+          onChange={(e) => setCalories(parseNumericFieldValue(e.target.value))}
           sx={fieldSx}
         />
 
@@ -562,9 +571,8 @@ export default function CreateRecordDialog({
         </Button>
         <Button
           variant="contained"
-          disableElevation
+          disabled={!title || (calories !== "" && calories <= 0) || submitting}
           onClick={handleSubmit}
-          disabled={!title || calories <= 0 || submitting}
           sx={{
             textTransform: "none",
             fontWeight: 600,

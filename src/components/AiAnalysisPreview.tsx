@@ -40,16 +40,24 @@ import {
 interface FoodDraft {
   id: string;
   name: string;
-  calories: number;
-  protein: number;
-  carbohydrates: number;
-  fat: number;
-  fiber: number;
+  calories: number | "";
+  protein: number | "";
+  carbohydrates: number | "";
+  fat: number | "";
+  fiber: number | "";
   water: number;
   unit: string;
-  quantity: number;
+  quantity: number | "";
   mealType: MealType;
   editing: boolean;
+}
+
+function parseNumericFieldValue(value: string): number | "" {
+  return value === "" ? "" : Number(value);
+}
+
+function normalizeNumericFieldValue(value: number | ""): number {
+  return value === "" ? 0 : value;
 }
 
 interface Props {
@@ -78,7 +86,7 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
   return {
     type: "intake",
     title: f.name,
-    calories: f.calories,
+    calories: normalizeNumericFieldValue(f.calories),
     water: f.water,
     entryDate: new Date(
       `${date}T${new Date().toTimeString().slice(0, 5)}`,
@@ -86,10 +94,10 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
     mealType: f.mealType,
     source: "ai",
     nutrition: {
-      protein: f.protein,
-      carbohydrates: f.carbohydrates,
-      fat: f.fat,
-      fiber: f.fiber,
+      protein: normalizeNumericFieldValue(f.protein),
+      carbohydrates: normalizeNumericFieldValue(f.carbohydrates),
+      fat: normalizeNumericFieldValue(f.fat),
+      fiber: normalizeNumericFieldValue(f.fiber),
     },
   };
 }
@@ -98,10 +106,14 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
 
 function NutrientSummary({ food }: { food: FoodDraft }) {
   const parts = [
-    food.protein > 0 && `蛋白质${Math.round(food.protein)}g`,
-    food.carbohydrates > 0 && `碳水${Math.round(food.carbohydrates)}g`,
-    food.fat > 0 && `脂肪${Math.round(food.fat)}g`,
-    food.fiber > 0 && `纤维${Math.round(food.fiber)}g`,
+    normalizeNumericFieldValue(food.protein) > 0 &&
+      `蛋白质${Math.round(normalizeNumericFieldValue(food.protein))}g`,
+    normalizeNumericFieldValue(food.carbohydrates) > 0 &&
+      `碳水${Math.round(normalizeNumericFieldValue(food.carbohydrates))}g`,
+    normalizeNumericFieldValue(food.fat) > 0 &&
+      `脂肪${Math.round(normalizeNumericFieldValue(food.fat))}g`,
+    normalizeNumericFieldValue(food.fiber) > 0 &&
+      `纤维${Math.round(normalizeNumericFieldValue(food.fiber))}g`,
     food.water > 0 && `水分${Math.round(food.water)}ml`,
   ].filter(Boolean);
   if (parts.length === 0) return null;
@@ -123,7 +135,7 @@ function QuantityStepper({
   unit,
   onChange,
 }: {
-  quantity: number;
+  quantity: number | "";
   unit: string;
   onChange: (val: number) => void;
 }) {
@@ -131,8 +143,10 @@ function QuantityStepper({
     <Stack direction="row" alignItems="center" spacing={0.25}>
       <IconButton
         size="small"
-        disabled={quantity <= 0.5}
-        onClick={() => onChange(+(quantity - 0.5).toFixed(1))}
+        disabled={quantity === "" || quantity <= 0.5}
+        onClick={() =>
+          onChange(+(normalizeNumericFieldValue(quantity) - 0.5).toFixed(1))
+        }
         sx={{
           width: 28,
           height: 28,
@@ -159,7 +173,9 @@ function QuantityStepper({
       </Typography>
       <IconButton
         size="small"
-        onClick={() => onChange(+(quantity + 0.5).toFixed(1))}
+        onClick={() =>
+          onChange(+(normalizeNumericFieldValue(quantity) + 0.5).toFixed(1))
+        }
         sx={{
           width: 28,
           height: 28,
@@ -270,7 +286,7 @@ function FoodPreviewCard({
             color="primary.main"
             sx={{ fontSize: 18, lineHeight: 1.3 }}
           >
-            {Math.round(food.calories)}
+            {Math.round(normalizeNumericFieldValue(food.calories))}
           </Typography>
           <Typography
             variant="caption"
@@ -347,9 +363,11 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.calories || ""}
+              value={food.calories}
               onChange={(e) =>
-                onUpdate(food.id, { calories: Number(e.target.value) })
+                onUpdate(food.id, {
+                  calories: parseNumericFieldValue(e.target.value),
+                })
               }
               sx={{ width: 80 }}
             />
@@ -358,9 +376,11 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.quantity || ""}
+              value={food.quantity}
               onChange={(e) =>
-                onUpdate(food.id, { quantity: Number(e.target.value) })
+                onUpdate(food.id, {
+                  quantity: parseNumericFieldValue(e.target.value),
+                })
               }
               sx={{ width: 60 }}
             />
@@ -380,9 +400,11 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.protein || ""}
+              value={food.protein}
               onChange={(e) =>
-                onUpdate(food.id, { protein: Number(e.target.value) })
+                onUpdate(food.id, {
+                  protein: parseNumericFieldValue(e.target.value),
+                })
               }
               sx={{ flex: 1 }}
             />
@@ -391,9 +413,11 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.carbohydrates || ""}
+              value={food.carbohydrates}
               onChange={(e) =>
-                onUpdate(food.id, { carbohydrates: Number(e.target.value) })
+                onUpdate(food.id, {
+                  carbohydrates: parseNumericFieldValue(e.target.value),
+                })
               }
               sx={{ flex: 1 }}
             />
@@ -402,9 +426,11 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.fat || ""}
+              value={food.fat}
               onChange={(e) =>
-                onUpdate(food.id, { fat: Number(e.target.value) })
+                onUpdate(food.id, {
+                  fat: parseNumericFieldValue(e.target.value),
+                })
               }
               sx={{ flex: 1 }}
             />
@@ -413,9 +439,11 @@ function FoodPreviewCard({
               variant="standard"
               size="small"
               type="number"
-              value={food.fiber || ""}
+              value={food.fiber}
               onChange={(e) =>
-                onUpdate(food.id, { fiber: Number(e.target.value) })
+                onUpdate(food.id, {
+                  fiber: parseNumericFieldValue(e.target.value),
+                })
               }
               sx={{ flex: 1 }}
             />
@@ -445,7 +473,7 @@ export default function AiAnalysisPreview({
   const stage = analyzing ? "analyzing" : foods.length > 0 ? "preview" : "idle";
 
   const totalCalories = useMemo(
-    () => foods.reduce((s, f) => s + f.calories, 0),
+    () => foods.reduce((s, f) => s + normalizeNumericFieldValue(f.calories), 0),
     [foods],
   );
 
