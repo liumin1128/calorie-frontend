@@ -54,6 +54,18 @@
 - **WHEN** 调用 `deleteCalorieEntry(token, id)`
 - **THEN** SHALL 发送 DELETE 请求到 `/calorie/<id>`，返回被删除的记录对象
 
+### Requirement: 获取单条卡路里记录点评
+`calorieService` SHALL 提供获取单条卡路里记录点评的服务函数，调用后端 `POST /calorie/:id/comment` 并返回点评结果。
+
+#### Scenario: 成功获取记录点评
+- **WHEN** 调用 `getCalorieEntryComment(token, "entry-123")`
+- **THEN** 系统 SHALL 向 `/calorie/entry-123/comment` 发送 POST 请求并携带 JWT
+- **THEN** 系统 SHALL 返回包含 `comment` 和 `model` 字段的响应对象
+
+#### Scenario: 点评接口失败时抛出错误
+- **WHEN** 点评接口返回非 2xx 或网络请求失败
+- **THEN** 服务函数 SHALL 抛出 Error 供调用方决定是否降级展示
+
 ### Requirement: 类型定义对齐后端模型
 `CalorieEntry` 类型 SHALL 对齐后端数据模型，包含 `_id`、`userId`、`type`（"intake"|"burn"）、`calories`、`title`、`description?`、`images?`、`entryDate`、`createdAt`、`updatedAt` 字段。
 

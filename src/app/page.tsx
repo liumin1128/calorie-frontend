@@ -171,6 +171,10 @@ export default function Home() {
                   loading={tracker.loading}
                   error={tracker.error}
                   selectedDate={tracker.selectedDate}
+                  recentIntakeComment={tracker.recentIntakeComment}
+                  recentIntakeCommentLoading={
+                    tracker.recentIntakeCommentLoading
+                  }
                   onEdit={tracker.handleOpenEdit}
                   onDelete={tracker.handleDeleteRecord}
                   onRetry={tracker.loadEntries}

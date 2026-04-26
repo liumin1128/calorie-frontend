@@ -16,7 +16,10 @@ interface CalorieState {
   error: string | null;
   selectedDate: string;
   fetchEntries: (token: string, options?: { force?: boolean }) => Promise<void>;
-  addEntry: (token: string, data: CreateCalorieEntryDto) => Promise<void>;
+  addEntry: (
+    token: string,
+    data: CreateCalorieEntryDto,
+  ) => Promise<CalorieEntry>;
   editEntry: (
     token: string,
     id: string,
@@ -62,8 +65,9 @@ export const useCalorieStore = create<CalorieState>((set, get) => ({
   },
 
   addEntry: async (token: string, data: CreateCalorieEntryDto) => {
-    await createCalorieEntry(token, data);
+    const entry = await createCalorieEntry(token, data);
     await get().fetchEntries(token, { force: true });
+    return entry;
   },
 
   editEntry: async (token: string, id: string, data: CreateCalorieEntryDto) => {

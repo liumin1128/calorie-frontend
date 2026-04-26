@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCalorieStore } from "@/stores/calorieStore";
 import { useDailySummaryStore } from "@/stores/dailySummaryStore";
 import { lookupBarcodeNutrition } from "@/services/barcodeNutritionService";
+import { getCalorieEntryComment } from "@/services/calorieService";
 import type {
   BarcodeNutritionPreview,
   CalorieEntry,
@@ -56,6 +57,8 @@ export interface UseCalorieTrackerReturn {
   barcodePreviewSubmitting: boolean;
   barcodePreviewError: string | null;
   barcodePreviewData: BarcodeNutritionPreview | null;
+  recentIntakeComment: string | null;
+  recentIntakeCommentLoading: boolean;
   loadEntries: () => Promise<void>;
   handleSubmitRecord: (data: CreateCalorieEntryDto) => Promise<void>;
   handleBatchSubmitRecords: (records: CreateCalorieEntryDto[]) => Promise<void>;
@@ -110,7 +113,17 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   );
   const [barcodePreviewData, setBarcodePreviewData] =
     useState<BarcodeNutritionPreview | null>(null);
+  const [recentIntakeComment, setRecentIntakeComment] = useState<string | null>(
+    null,
+  );
+  const [recentIntakeCommentLoading, setRecentIntakeCommentLoading] =
+    useState(false);
   const barcodeLookupIdRef = useRef(0);
+
+  const resetRecentIntakeComment = () => {
+    setRecentIntakeComment(null);
+    setRecentIntakeCommentLoading(false);
+  };
 
   const resetBarcodePreviewState = () => {
     barcodeLookupIdRef.current += 1;
@@ -129,6 +142,10 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     if (token) fetchEntries(token);
   }, [token, selectedDate, fetchEntries]);
 
+  useEffect(() => {
+    resetRecentIntakeComment();
+  }, [selectedDate]);
+
   const setSelectedDate = (date: string) => {
     storeSetSelectedDate(date);
   };
@@ -137,10 +154,33 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     if (!token) return;
     if (editingEntry) {
       await editEntry(token, editingEntry._id, data);
-    } else {
-      await addEntry(token, data);
+      refreshCalendar(token, { force: true }).catch(() => {});
+      return;
     }
+
+    if (data.type === "intake") {
+      resetRecentIntakeComment();
+    }
+
+    const createdEntry = await addEntry(token, data);
     refreshCalendar(token, { force: true }).catch(() => {});
+
+    if (data.type !== "intake") {
+      return;
+    }
+
+    setRecentIntakeCommentLoading(true);
+
+    getCalorieEntryComment(token, createdEntry._id)
+      .then(({ comment }) => {
+        setRecentIntakeComment(comment);
+      })
+      .catch(() => {
+        setRecentIntakeComment(null);
+      })
+      .finally(() => {
+        setRecentIntakeCommentLoading(false);
+      });
   };
 
   const handleBatchSubmitRecords = async (records: CreateCalorieEntryDto[]) => {
@@ -301,6 +341,8 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     barcodePreviewSubmitting,
     barcodePreviewError,
     barcodePreviewData,
+    recentIntakeComment,
+    recentIntakeCommentLoading,
     loadEntries,
     handleSubmitRecord,
     handleBatchSubmitRecords,

@@ -1,6 +1,7 @@
 import { request } from "@/lib/api";
 import type {
   CalorieEntry,
+  CalorieCommentResponse,
   CreateCalorieEntryDto,
   UpdateCalorieEntryDto,
   QueryCalorieEntryParams,
@@ -43,6 +44,16 @@ export function deleteCalorieEntry(token: string, id: string) {
     method: "DELETE",
     token,
   });
+}
+
+export function getCalorieEntryComment(token: string, id: string) {
+  return request<CalorieCommentResponse>(
+    `/calorie/${encodeURIComponent(id)}/comment`,
+    {
+      method: "POST",
+      token,
+    },
+  );
 }
 
 export function getDailySummary(

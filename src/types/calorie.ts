@@ -69,6 +69,11 @@ export interface CalorieEntry {
   updatedAt: string;
 }
 
+export interface CalorieCommentResponse {
+  comment: string;
+  model: string;
+}
+
 export interface CreateCalorieEntryDto {
   type: CalorieType;
   calories: number;

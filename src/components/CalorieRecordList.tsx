@@ -30,6 +30,8 @@ interface CalorieRecordListProps {
   loading: boolean;
   error: string | null;
   selectedDate: string;
+  recentIntakeComment: string | null;
+  recentIntakeCommentLoading: boolean;
   onEdit: (entry: CalorieEntry) => void;
   onDelete: (id: string) => void;
   onRetry: () => void;
@@ -187,6 +189,8 @@ function TypeCard({
   onDelete,
   onAdd,
   onSelectEntryType,
+  recentIntakeComment,
+  recentIntakeCommentLoading,
 }: {
   type: CalorieType;
   entries: CalorieEntry[];
@@ -195,6 +199,8 @@ function TypeCard({
   onDelete: (id: string) => void;
   onAdd: () => void;
   onSelectEntryType?: (type: RecordEntryType) => void;
+  recentIntakeComment?: string | null;
+  recentIntakeCommentLoading?: boolean;
 }) {
   const isIntake = type === "intake";
   const total = useMemo(
@@ -234,6 +240,14 @@ function TypeCard({
               </Button>
             )}
           </Box>
+
+          {isIntake && (recentIntakeCommentLoading || recentIntakeComment) ? (
+            <Alert severity="info" sx={{ alignItems: "center" }}>
+              {recentIntakeCommentLoading
+                ? "正在生成本次饮食点评..."
+                : recentIntakeComment}
+            </Alert>
+          ) : null}
 
           {entries.length > 0 ? (
             <Stack spacing={1}>
@@ -282,6 +296,8 @@ export default function CalorieRecordList({
   loading,
   error,
   selectedDate,
+  recentIntakeComment,
+  recentIntakeCommentLoading,
   onEdit,
   onDelete,
   onRetry,
@@ -336,6 +352,8 @@ export default function CalorieRecordList({
         onDelete={onDelete}
         onAdd={onOpenCreate}
         onSelectEntryType={onSelectEntryType}
+        recentIntakeComment={recentIntakeComment}
+        recentIntakeCommentLoading={recentIntakeCommentLoading}
       />
 
       {/* 运动卡片 */}
