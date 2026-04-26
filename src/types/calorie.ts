@@ -80,6 +80,7 @@ export interface CreateCalorieEntryDto {
   water?: number;
   title: string;
   description?: string;
+  images?: string[];
   entryDate: string;
   mealType?: MealType;
   source?: EntrySource;

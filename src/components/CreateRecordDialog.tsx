@@ -185,6 +185,11 @@ export default function CreateRecordDialog({
     setSubmitting(true);
     setError(null);
     try {
+      const images =
+        effectiveType === "intake" && token
+          ? await imageAnalyzerRef.current?.resolveImages()
+          : [];
+
       // 构建 nutrition 对象，未填字段不传
       const nutrition: NutritionInfo = {};
       if (protein !== "") nutrition.protein = Number(protein);
@@ -198,6 +203,7 @@ export default function CreateRecordDialog({
         title,
         calories: normalizedCalories,
         entryDate: new Date(`${date}T${time}`).toISOString(),
+        ...(effectiveType === "intake" ? { images } : {}),
         ...(effectiveType === "intake" ? { mealType } : {}),
         ...(effectiveType === "intake" && hasNutrition ? { nutrition } : {}),
         ...(effectiveType === "intake" && water !== ""
@@ -268,11 +274,12 @@ export default function CreateRecordDialog({
         }}
       >
         {/* AI 图片识别 */}
-        {effectiveType === "intake" && !isEdit && token && (
+        {effectiveType === "intake" && token && (
           <ImageUploadAnalyzer
             key={imageKey}
             ref={imageAnalyzerRef}
             token={token}
+            initialImageUrl={initialData?.images?.[0] ?? null}
             onAnalyzed={({ title: t, calories: c }) => {
               setTitle(t);
               setCalories(c);

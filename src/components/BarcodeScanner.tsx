@@ -21,6 +21,7 @@ import type {
   MineralsInfo,
 } from "@/types/calorie";
 import { detectBarcodeFromFile, type ScanResult } from "@/lib/barcodeScanner";
+import { RECORD_IMAGE_ACCEPT } from "@/services/imagePreprocessService";
 
 /* ---------- 常量 ---------- */
 const mineralLabels: {
@@ -57,8 +58,10 @@ interface Props {
   submitting: boolean;
   error: string | null;
   preview: BarcodeNutritionPreviewData | null;
+  imageUrl?: string | null;
   onClose: () => void;
   onDetected?: (result: ScanResult) => void | Promise<void>;
+  onFileSelected?: (file: File) => void | Promise<void>;
   onRetryScan: () => void;
   onConfirm: () => void | Promise<void>;
 }
@@ -119,8 +122,10 @@ export default function BarcodeScanner({
   submitting,
   error,
   preview,
+  imageUrl,
   onClose,
   onDetected,
+  onFileSelected,
   onRetryScan,
   onConfirm,
 }: Props) {
@@ -152,6 +157,7 @@ export default function BarcodeScanner({
       setLocalError("");
       setDetecting(true);
       try {
+        await onFileSelected?.(file);
         const result = await detectBarcodeFromFile(file);
         if (!result) {
           setLocalError("未识别到条码，请确保图片中包含清晰的条形码");
@@ -166,7 +172,7 @@ export default function BarcodeScanner({
         setDetecting(false);
       }
     },
-    [onDetected],
+    [onDetected, onFileSelected],
   );
 
   const onFile = useCallback(
@@ -309,6 +315,22 @@ export default function BarcodeScanner({
 
             {/* 商品名称 + 副信息 */}
             <Box>
+              {imageUrl ? (
+                <Box
+                  component="img"
+                  src={imageUrl}
+                  alt="扫码图片预览"
+                  sx={{
+                    width: "100%",
+                    height: 132,
+                    objectFit: "cover",
+                    borderRadius: 2,
+                    mb: 1.5,
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                />
+              ) : null}
               <Typography
                 variant="subtitle1"
                 sx={{ fontWeight: 700, mb: 0.25 }}
@@ -447,7 +469,7 @@ export default function BarcodeScanner({
       <input
         ref={cameraRef}
         type="file"
-        accept="image/*"
+        accept={RECORD_IMAGE_ACCEPT}
         capture="environment"
         onChange={onFile}
         style={{ display: "none" }}
@@ -455,7 +477,7 @@ export default function BarcodeScanner({
       <input
         ref={albumRef}
         type="file"
-        accept="image/*"
+        accept={RECORD_IMAGE_ACCEPT}
         onChange={onFile}
         style={{ display: "none" }}
       />

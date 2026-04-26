@@ -42,6 +42,14 @@ export interface PreparedImageAsset {
   previewUrl: string;
 }
 
+export const RECORD_IMAGE_ACCEPT = AI_IMAGE_ACCEPT;
+
+export const RECORD_IMAGE_VALIDATION_MESSAGES = {
+  unsupportedFormat: "仅支持 JPEG、PNG、WebP、GIF、HEIC、HEIF 格式",
+  oversize: "图片大小不能超过 15MB",
+  convertFailed: "HEIC/HEIF 图片转换失败，请改用 JPEG 后重试",
+} as const;
+
 function getFileExtension(fileName: string): string {
   const segments = fileName.split(".");
   return segments.length > 1 ? (segments.at(-1)?.toLowerCase() ?? "") : "";
@@ -127,11 +135,11 @@ async function compressImage(file: File): Promise<File> {
 
 export function validateImageFile(file: File): string | null {
   if (!isAllowedImageFile(file)) {
-    return "仅支持 JPEG、PNG、WebP、GIF、HEIC、HEIF 格式";
+    return RECORD_IMAGE_VALIDATION_MESSAGES.unsupportedFormat;
   }
 
   if (file.size > MAX_SOURCE_SIZE) {
-    return "图片大小不能超过 15MB";
+    return RECORD_IMAGE_VALIDATION_MESSAGES.oversize;
   }
 
   return null;
@@ -150,7 +158,7 @@ export async function prepareImageForAiUpload(
     try {
       normalizedFile = await convertHeicToJpeg(file);
     } catch {
-      throw new Error("HEIC/HEIF 图片转换失败，请改用 JPEG 后重试");
+      throw new Error(RECORD_IMAGE_VALIDATION_MESSAGES.convertFailed);
     }
   }
 

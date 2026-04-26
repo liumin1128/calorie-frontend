@@ -248,8 +248,10 @@ export default function Home() {
         submitting={tracker.barcodePreviewSubmitting}
         error={tracker.barcodePreviewError}
         preview={tracker.barcodePreviewData}
+        imageUrl={tracker.barcodeImagePreviewUrl}
         onClose={tracker.handleCloseBarcodePreview}
         onDetected={tracker.handleDetectedBarcode}
+        onFileSelected={tracker.handleBarcodeFileSelected}
         onRetryScan={tracker.handleRetryBarcodeScan}
         onConfirm={tracker.handleConfirmBarcodePreview}
       />

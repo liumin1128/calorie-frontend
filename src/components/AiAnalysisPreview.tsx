@@ -19,7 +19,6 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import type { TransitionProps } from "@mui/material/transitions";
 import { forwardRef } from "react";
@@ -30,10 +29,9 @@ import type {
 } from "@/types/calorie";
 import { getDefaultMealType, mealTypeLabels } from "@/types/calorie";
 import { analyzeImageNutrition } from "@/services/imageAnalysisService";
-import {
-  AI_IMAGE_ACCEPT,
-  prepareImageForAiUpload,
-} from "@/services/imagePreprocessService";
+import { RECORD_IMAGE_ACCEPT } from "@/services/imagePreprocessService";
+import ImageAttachmentField from "@/components/ImageAttachmentField";
+import { useImageAttachment } from "@/hooks/useImageAttachment";
 
 /* ───── 类型 ───── */
 
@@ -82,7 +80,11 @@ function nextId() {
   return `food-${++idCounter}`;
 }
 
-function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
+function foodToDto(
+  f: FoodDraft,
+  date: string,
+  images?: string[],
+): CreateCalorieEntryDto {
   return {
     type: "intake",
     title: f.name,
@@ -93,6 +95,7 @@ function foodToDto(f: FoodDraft, date: string): CreateCalorieEntryDto {
     ).toISOString(),
     mealType: f.mealType,
     source: "ai",
+    ...(images?.length ? { images } : {}),
     nutrition: {
       protein: normalizeNumericFieldValue(f.protein),
       carbohydrates: normalizeNumericFieldValue(f.carbohydrates),
@@ -464,11 +467,11 @@ export default function AiAnalysisPreview({
   onSave,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [foods, setFoods] = useState<FoodDraft[]>([]);
   const [saving, setSaving] = useState(false);
+  const attachment = useImageAttachment();
 
   const stage = analyzing ? "analyzing" : foods.length > 0 ? "preview" : "idle";
 
@@ -478,13 +481,12 @@ export default function AiAnalysisPreview({
   );
 
   const handleReset = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
+    attachment.clear();
     setFoods([]);
     setError(null);
     setAnalyzing(false);
     setSaving(false);
-  }, [previewUrl]);
+  }, [attachment]);
 
   const handleClose = () => {
     handleReset();
@@ -504,10 +506,8 @@ export default function AiAnalysisPreview({
       setError(null);
       setFoods([]);
 
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
       try {
-        const prepared = await prepareImageForAiUpload(file);
-        setPreviewUrl(prepared.previewUrl);
+        const prepared = await attachment.selectFile(file);
 
         const res = await analyzeImageNutrition(token, prepared.file);
         if (!res.foods?.length) {
@@ -539,7 +539,7 @@ export default function AiAnalysisPreview({
         setAnalyzing(false);
       }
     },
-    [token, previewUrl],
+    [attachment, token],
   );
 
   const handleUpdateFood = useCallback(
@@ -565,7 +565,9 @@ export default function AiAnalysisPreview({
     if (foods.length === 0) return;
     setSaving(true);
     try {
-      const dtos = foods.map((f) => foodToDto(f, selectedDate));
+      const uploadedUrl = await attachment.uploadIfNeeded(token);
+      const images = uploadedUrl ? [uploadedUrl] : undefined;
+      const dtos = foods.map((f) => foodToDto(f, selectedDate, images));
       await onSave(dtos);
       handleClose();
     } catch (err) {
@@ -590,17 +592,17 @@ export default function AiAnalysisPreview({
       <input
         ref={inputRef}
         type="file"
-        accept={AI_IMAGE_ACCEPT}
+        accept={RECORD_IMAGE_ACCEPT}
         onChange={handleFileSelect}
         hidden
       />
 
       {/* ─── 图片区 ─── */}
-      {previewUrl && (
+      {attachment.displayUrl && (
         <Box sx={{ position: "relative" }}>
           <Box
             component="img"
-            src={previewUrl}
+            src={attachment.displayUrl}
             alt="食物图片"
             sx={{
               width: "100%",
@@ -682,7 +684,7 @@ export default function AiAnalysisPreview({
       )}
 
       {/* ─── 无图片 header ─── */}
-      {!previewUrl && (
+      {!attachment.displayUrl && (
         <Box
           sx={{
             display: "flex",
@@ -710,7 +712,7 @@ export default function AiAnalysisPreview({
         sx={{
           px: 2.5,
           pb: 2.5,
-          pt: previewUrl ? 2 : 0,
+          pt: attachment.displayUrl ? 2 : 0,
           overflowY: "auto",
         }}
       >
@@ -721,36 +723,23 @@ export default function AiAnalysisPreview({
               sx={{ fontSize: 36, color: "primary.light", mb: 1.5 }}
             />
             <Typography variant="body2" color="text.secondary">
-              {previewUrl ? "正在识别食物..." : "正在优化图片并准备分析..."}
+              {attachment.displayUrl
+                ? "正在识别食物..."
+                : "正在优化图片并准备分析..."}
             </Typography>
           </Box>
         )}
 
         {/* 空 */}
         {stage === "idle" && !error && (
-          <Box
-            onClick={() => inputRef.current?.click()}
-            sx={{
-              textAlign: "center",
-              py: 5,
-              cursor: "pointer",
-              borderRadius: 0.5,
-              border: "2px dashed",
-              borderColor: "divider",
-              transition: "border-color 0.2s, background 0.2s",
-              "&:hover": {
-                borderColor: "primary.light",
-                bgcolor: "rgba(61,107,79,0.03)",
-              },
-            }}
-          >
-            <CameraAltIcon
-              sx={{ fontSize: 32, color: "text.secondary", mb: 1 }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              点击选择食物图片
-            </Typography>
-          </Box>
+          <ImageAttachmentField
+            imageUrl={attachment.displayUrl}
+            preparing={attachment.preparing}
+            uploading={attachment.uploading}
+            error={attachment.error}
+            emptyText="点击选择食物图片"
+            onPick={() => inputRef.current?.click()}
+          />
         )}
 
         {/* 错误 */}

@@ -6,6 +6,8 @@ import { useCalorieStore } from "@/stores/calorieStore";
 import { useDailySummaryStore } from "@/stores/dailySummaryStore";
 import { lookupBarcodeNutrition } from "@/services/barcodeNutritionService";
 import { getCalorieEntryComment } from "@/services/calorieService";
+import { prepareImageForAiUpload } from "@/services/imagePreprocessService";
+import { uploadCalorieImage } from "@/services/storageService";
 import type {
   BarcodeNutritionPreview,
   CalorieEntry,
@@ -17,6 +19,7 @@ import { getDefaultMealType } from "@/types/calorie";
 function buildBarcodeEntryDto(
   preview: BarcodeNutritionPreview,
   selectedDate: string,
+  images?: string[],
 ): CreateCalorieEntryDto {
   const description = [preview.brand, preview.servingText]
     .filter(Boolean)
@@ -31,6 +34,7 @@ function buildBarcodeEntryDto(
     ).toISOString(),
     mealType: getDefaultMealType(),
     source: "barcode",
+    ...(images?.length ? { images } : {}),
     ...(preview.entryWater != null ? { water: preview.entryWater } : {}),
     ...(description ? { description } : {}),
     ...(preview.entryNutrition ? { nutrition: preview.entryNutrition } : {}),
@@ -57,6 +61,7 @@ export interface UseCalorieTrackerReturn {
   barcodePreviewSubmitting: boolean;
   barcodePreviewError: string | null;
   barcodePreviewData: BarcodeNutritionPreview | null;
+  barcodeImagePreviewUrl: string | null;
   recentIntakeComment: string | null;
   recentIntakeCommentLoading: boolean;
   loadEntries: () => Promise<void>;
@@ -77,6 +82,7 @@ export interface UseCalorieTrackerReturn {
     text: string;
     format: string;
   }) => Promise<void>;
+  handleBarcodeFileSelected: (file: File) => Promise<void>;
   handleCloseBarcodePreview: () => void;
   handleRetryBarcodeScan: () => void;
   handleConfirmBarcodePreview: () => Promise<void>;
@@ -118,6 +124,10 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
   );
   const [recentIntakeCommentLoading, setRecentIntakeCommentLoading] =
     useState(false);
+  const [barcodeImageFile, setBarcodeImageFile] = useState<File | null>(null);
+  const [barcodeImagePreviewUrl, setBarcodeImagePreviewUrl] = useState<
+    string | null
+  >(null);
   const barcodeLookupIdRef = useRef(0);
 
   const resetRecentIntakeComment = () => {
@@ -131,6 +141,20 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     setBarcodePreviewSubmitting(false);
     setBarcodePreviewError(null);
     setBarcodePreviewData(null);
+    setBarcodeImageFile(null);
+    setBarcodeImagePreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  };
+
+  const handleBarcodeFileSelected = async (file: File) => {
+    const prepared = await prepareImageForAiUpload(file);
+    setBarcodeImageFile(prepared.file);
+    setBarcodeImagePreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return prepared.previewUrl;
+    });
   };
 
   const loadEntries = async () => {
@@ -308,8 +332,17 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     setBarcodePreviewSubmitting(true);
     setBarcodePreviewError(null);
     try {
+      const uploadedUrl =
+        barcodeImageFile && token
+          ? await uploadCalorieImage(token, barcodeImageFile)
+          : undefined;
+
       await handleSubmitRecord(
-        buildBarcodeEntryDto(barcodePreviewData, selectedDate),
+        buildBarcodeEntryDto(
+          barcodePreviewData,
+          selectedDate,
+          uploadedUrl ? [uploadedUrl] : undefined,
+        ),
       );
       resetBarcodePreviewState();
       setQrScannerOpen(false);
@@ -341,6 +374,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
     barcodePreviewSubmitting,
     barcodePreviewError,
     barcodePreviewData,
+    barcodeImagePreviewUrl,
     recentIntakeComment,
     recentIntakeCommentLoading,
     loadEntries,
@@ -359,6 +393,7 @@ export function useCalorieTracker(): UseCalorieTrackerReturn {
       setQrScannerOpen(false);
     },
     handleDetectedBarcode,
+    handleBarcodeFileSelected,
     handleCloseBarcodePreview,
     handleRetryBarcodeScan,
     handleConfirmBarcodePreview,

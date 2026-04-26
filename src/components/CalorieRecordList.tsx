@@ -91,6 +91,23 @@ function RecordRow({
           <FitnessCenterIcon sx={{ fontSize: 16, color: "warning.main" }} />
         )}
       </Box>
+      {entry.images?.[0] ? (
+        <Box
+          component="img"
+          src={entry.images[0]}
+          alt={`${entry.title} 图片`}
+          loading="lazy"
+          sx={{
+            width: 42,
+            height: 42,
+            borderRadius: 1.5,
+            objectFit: "cover",
+            flexShrink: 0,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      ) : null}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="body2" fontWeight={500} noWrap>
           {entry.title}

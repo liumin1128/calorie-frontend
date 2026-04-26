@@ -1,19 +1,4 @@
-## ADDED Requirements
-
-### Requirement: 首页加载真实数据
-首页 SHALL 在组件挂载时通过 `calorieService` 从后端 API 加载当天的卡路里记录，替代硬编码模拟数据。
-
-#### Scenario: 页面加载时获取当天记录
-- **WHEN** 用户访问首页
-- **THEN** SHALL 调用 API 获取当天的卡路里记录并展示在界面上
-
-#### Scenario: 加载中显示加载状态
-- **WHEN** API 请求正在进行中
-- **THEN** SHALL 显示加载指示器（如 Skeleton 或 Loading 提示）
-
-#### Scenario: 加载失败显示错误提示
-- **WHEN** API 请求失败
-- **THEN** SHALL 显示错误提示信息，并提供重试操作
+## MODIFIED Requirements
 
 ### Requirement: 创建卡路里记录
 用户 SHALL 能够通过弹窗表单创建新的卡路里记录，数据提交到后端 API。弹窗支持通过图片上传 + AI 分析辅助填写，并在存在来源图片时将图片 URL 一并保存到记录中。
@@ -50,24 +35,6 @@
 - **WHEN** 被编辑记录已包含 `images`
 - **THEN** 弹窗 SHALL 回显已保存图片
 - **THEN** 若用户替换或移除图片，更新请求 SHALL 发送新的 `images` 数组
-
-### Requirement: 删除卡路里记录
-用户 SHALL 能够删除已有的卡路里记录。
-
-#### Scenario: 确认删除
-- **WHEN** 用户点击删除按钮
-- **THEN** SHALL 调用后端 API 删除记录，成功后从列表中移除该记录
-
-### Requirement: 按日期筛选记录
-用户 SHALL 能够选择日期查看该日的卡路里记录。
-
-#### Scenario: 切换日期
-- **WHEN** 用户选择不同的日期
-- **THEN** SHALL 重新调用 API 获取该日的记录并更新界面
-
-#### Scenario: 默认显示今天
-- **WHEN** 用户首次访问首页
-- **THEN** SHALL 默认显示今天的日期和记录
 
 ### Requirement: 记录弹窗字段适配后端
 记录弹窗（创建/编辑）的表单字段 SHALL 对齐后端 API 的字段定义，饮食类型时额外提供图片上传入口，并支持记录级图片回显。
